@@ -18,7 +18,7 @@ const UpdateModal = ({ isOpen, setUpdateModal, brand, fetchBrands }) => {
             return;
         }
         try {
-            await BrandService.updateBrand(brand.id, { name });
+            await BrandService.updateBrand(brand.id, { id: brand.id, brandName: name });
             toast.success("Cập nhật Brand thành công!");
             fetchBrands();
             setUpdateModal(false);

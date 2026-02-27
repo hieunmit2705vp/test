@@ -15,7 +15,7 @@ export default function CreateModal({ isOpen, onConfirm, onCancel, fetchSleeves 
         }
 
         try {
-            await SleeveService.createSleeve({ name });
+            await SleeveService.createSleeve({ sleeveName: name });
             toast.success("Thêm Sleeve thành công!");
             fetchSleeves(); // Load lại danh sách sleeve
             onConfirm(); // Đóng modal

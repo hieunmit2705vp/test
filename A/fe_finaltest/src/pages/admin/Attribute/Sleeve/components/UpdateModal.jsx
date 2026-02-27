@@ -18,7 +18,7 @@ const UpdateModal = ({ isOpen, setUpdateModal, sleeve, fetchSleeves }) => {
             return;
         }
         try {
-            await SleeveService.updateSleeve(sleeve.id, { name });
+            await SleeveService.updateSleeve(sleeve.id, { id: sleeve.id, sleeveName: name });
             toast.success("Cập nhật Sleeve thành công!");
             fetchSleeves();
             setUpdateModal(false);

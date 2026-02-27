@@ -18,7 +18,7 @@ const UpdateModal = ({ isOpen, setUpdateModal, material, fetchMaterials }) => {
             return;
         }
         try {
-            await MaterialService.updateMaterial(material.id, { name });
+            await MaterialService.updateMaterial(material.id, { id: material.id, materialName: name });
             toast.success("Cập nhật Material thành công!");
             fetchMaterials();
             setUpdateModal(false);

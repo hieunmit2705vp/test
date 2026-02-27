@@ -15,7 +15,7 @@ export default function CreateModal({ isOpen, onConfirm, onCancel, fetchMaterial
         }
 
         try {
-            await MaterialService.createMaterial({ name });
+            await MaterialService.createMaterial({ materialName: name });
             toast.success("Thêm Material thành công!");
             fetchMaterials(); // Load lại danh sách material
             onConfirm(); // Đóng modal

@@ -15,7 +15,7 @@ export default function CreateModal({ isOpen, onConfirm, onCancel, fetchBrands }
         }
 
         try {
-            await BrandService.createBrand({ name });
+            await BrandService.createBrand({ brandName: name });
             toast.success("Thêm Brand thành công!");
             fetchBrands(); // Load lại danh sách brand
             onConfirm(); // Đóng modal
