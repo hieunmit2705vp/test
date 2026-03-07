@@ -118,6 +118,9 @@ export default function Collar() {
                   <th className="py-4 px-6 font-semibold tracking-wider w-20 text-center">
                     STT
                   </th>
+                  <th className="py-4 px-6 font-semibold tracking-wider w-20 text-center">
+                    ID
+                  </th>
                   <th
                     className="py-4 px-6 font-semibold tracking-wider cursor-pointer hover:bg-[#163172] transition-colors"
                     onClick={() => handleSort("name")}
@@ -150,6 +153,9 @@ export default function Collar() {
                   >
                     <td className="py-4 px-6 text-center font-medium">
                       {index + 1 + currentPage * pageSize}
+                    </td>
+                    <td className="py-4 px-6 text-center font-bold">
+                      #{item.id}
                     </td>
                     <td className="py-4 px-6 font-semibold text-gray-800">
                       {item.name}
@@ -193,7 +199,7 @@ export default function Collar() {
                 ))}
                 {collars.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="py-8 text-center text-gray-500 italic">
+                    <td colSpan="5" className="py-8 text-center text-gray-500 italic">
                       Không tìm thấy dữ liệu
                     </td>
                   </tr>

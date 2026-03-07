@@ -38,6 +38,9 @@ public class UpdateAccountService {
     @Autowired
     private AddressRepository addressRepository;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     private Customer getCurrentCustomer() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
@@ -55,21 +58,36 @@ public class UpdateAccountService {
         return customer;
     }
 
+    @Transactional
     public CustomerResponse updateCustomerInfo(UpdateCustomerInfomationRequest request) {
         Customer customer = getCurrentCustomer();
+
+        // Capture state
+        CustomerResponse oldState = CustomerMapper.toCustomerResponse(customer);
+
         customer.setFullname(request.getFullname());
         customer.setEmail(request.getEmail());
         customer.setPhone(request.getPhone());
         customerRepository.save(customer);
-        return CustomerMapper.toCustomerResponse(customer);
+
+        CustomerResponse newState = CustomerMapper.toCustomerResponse(customer);
+        auditLogService.log("Customer", customer.getId(), "UPDATE_PROFILE", null,
+                oldState, newState, "Cập nhật thông tin cá nhân: " + customer.getUsername());
+
+        return newState;
     }
 
+    @Transactional
     public void updateCustomerPassword(UpdateCustomerPasswordRequest request) {
         Customer customer = getCurrentCustomer();
         String encodedPassword = passwordEncoder.encode(request.getPassword());
         customer.setPassword(encodedPassword);
         customerRepository.save(customer);
+
+        auditLogService.log("Customer", customer.getId(), "CHANGE_PASSWORD", null,
+                "********", "********", "Khách hàng đổi mật khẩu: " + customer.getUsername());
     }
+
     public List<CustomerAddressResponse> getCurrentCustomerAddresses() {
         Customer customer = getCurrentCustomer();
         List<Address> addresses = addressRepository.findByCustomer(customer);
@@ -94,7 +112,11 @@ public class UpdateAccountService {
 
         Address saved = addressRepository.save(address);
 
-        return CustomerAddressMapper.toAddressResponse(saved);
+        CustomerAddressResponse response = CustomerAddressMapper.toAddressResponse(saved);
+        auditLogService.log("Address", saved.getId(), "CREATE", null,
+                null, response, "Khách hàng thêm địa chỉ mới: " + saved.getAddressDetail());
+
+        return response;
     }
 
     @Transactional
@@ -107,7 +129,11 @@ public class UpdateAccountService {
             throw new BadCredentialsException("Không có quyền xóa địa chỉ này");
         }
 
+        CustomerAddressResponse oldState = CustomerAddressMapper.toAddressResponse(address);
         addressRepository.delete(address);
+
+        auditLogService.log("Address", addressId, "DELETE", null,
+                oldState, null, "Khách hàng xóa địa chỉ: " + address.getAddressDetail());
     }
 
 }

@@ -44,7 +44,7 @@ public class Address {
 
     @NotNull
     @Column(name = "ward_id", nullable = false)
-    private Integer wardId;
+    private String wardId;
 
     @Size(max = 50)
     @NotNull

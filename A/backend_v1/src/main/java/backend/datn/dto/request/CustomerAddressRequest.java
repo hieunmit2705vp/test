@@ -22,7 +22,7 @@ public class CustomerAddressRequest {
     private String districtName;
 
     @NotNull
-    private Integer wardId;
+    private String wardId;
 
     @NotNull
     @Size(max = 50)

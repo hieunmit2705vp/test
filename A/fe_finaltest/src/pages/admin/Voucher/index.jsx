@@ -410,6 +410,7 @@ export default function Voucher() {
         <thead>
           <tr className="bg-blue-100 text-gray-700 text-xs uppercase tracking-wider">
             <th className="px-4 py-3 rounded-tl-lg">STT</th>
+            <th className="px-4 py-3">ID</th>
             <th className="px-4 py-3">Mã Voucher</th>
             <th className="px-4 py-3">Tên Voucher</th>
             <th className="px-4 py-3">Mô tả</th>
@@ -432,6 +433,7 @@ export default function Voucher() {
                 className="bg-white hover:bg-gray-50 transition-colors duration-200 border-b border-gray-200 last:border-b-0"
               >
                 <td className="px-4 py-3">{index + 1}</td>
+                <td className="px-4 py-3 font-bold">#{item.id}</td>
                 <td className="px-4 py-3 font-medium text-gray-800">
                   {item.voucherCode}
                 </td>

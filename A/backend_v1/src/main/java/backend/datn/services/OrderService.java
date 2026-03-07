@@ -1,6 +1,5 @@
 package backend.datn.services;
 
-
 import backend.datn.dto.response.OrderDetailResponse;
 import backend.datn.dto.response.OrderResponse;
 import backend.datn.dto.response.VoucherResponse;
@@ -32,7 +31,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-
 @Service
 public class OrderService {
     @Autowired
@@ -44,13 +42,16 @@ public class OrderService {
     @Autowired
     private OrderDetailRepository orderDetailRepository;
 
+    @Autowired
+    private AuditLogService auditLogService;
 
     /**
      * Lấy danh sách đơn hàng với phân trang và tìm kiếm
      */
 
     public Page<OrderResponse> getAllOrders(String search, int page, int size, String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
         // Nếu search không rỗng, thêm ký tự '%' vào đầu và cuối
@@ -64,7 +65,8 @@ public class OrderService {
      * Lấy thông tin chi tiết đơn hàng theo ID
      */
     public OrderResponse getOrderById(int id) {
-        Order order = orderRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + id));
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + id));
         return OrderMapper.toOrderResponse(order);
     }
 
@@ -73,10 +75,12 @@ public class OrderService {
      */
     @Transactional
     public OrderResponse getOrderWithDetails(int orderId) {
-        Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
         List<OrderDetail> orderDetails = orderDetailRepository.findByOrderId(orderId);
-        List<OrderDetailResponse> orderDetailResponses = orderDetails.stream().map(OrderDetailMapper::toOrderDetailResponse).collect(Collectors.toList());
+        List<OrderDetailResponse> orderDetailResponses = orderDetails.stream()
+                .map(OrderDetailMapper::toOrderDetailResponse).collect(Collectors.toList());
 
         OrderResponse response = OrderMapper.toOrderResponse(order);
         response.setOrderDetails(orderDetailResponses);
@@ -85,10 +89,12 @@ public class OrderService {
     }
 
     /**
-     * Tạo mới đơn hàng, kiểm tra số lượng tồn kho và áp dụng khuyến mãi, voucher nếu có
+     * Tạo mới đơn hàng, kiểm tra số lượng tồn kho và áp dụng khuyến mãi, voucher
+     * nếu có
      */
     @Transactional
-    public Order createOrder(Customer customer, Employee employee, Voucher voucher, List<OrderDetail> orderDetails, int paymentMethod) {
+    public Order createOrder(Customer customer, Employee employee, Voucher voucher, List<OrderDetail> orderDetails,
+            int paymentMethod) {
         Order order = new Order();
         order.setEmployee(employee);
         order.setVoucher(voucher);
@@ -103,10 +109,13 @@ public class OrderService {
         List<ProductDetail> updatedProducts = new ArrayList<>();
 
         for (OrderDetail orderDetail : orderDetails) {
-            ProductDetail productDetail = productDetailRepository.findById(orderDetail.getProductDetail().getId()).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm với ID: " + orderDetail.getProductDetail().getId()));
+            ProductDetail productDetail = productDetailRepository.findById(orderDetail.getProductDetail().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Không tìm thấy sản phẩm với ID: " + orderDetail.getProductDetail().getId()));
 
             if (productDetail.getQuantity() < orderDetail.getQuantity()) {
-                throw new InsufficientStockException("Không đủ hàng trong kho: " + productDetail.getProductDetailCode());
+                throw new InsufficientStockException(
+                        "Không đủ hàng trong kho: " + productDetail.getProductDetailCode());
             }
 
             productDetail.setQuantity(productDetail.getQuantity() - orderDetail.getQuantity());
@@ -116,7 +125,8 @@ public class OrderService {
             BigDecimal finalPrice = productDetail.getSalePrice();
 
             if (promotion != null) {
-                BigDecimal discountPercent = BigDecimal.valueOf(100 - promotion.getPromotionPercent()).divide(BigDecimal.valueOf(100));
+                BigDecimal discountPercent = BigDecimal.valueOf(100 - promotion.getPromotionPercent())
+                        .divide(BigDecimal.valueOf(100));
                 finalPrice = finalPrice.multiply(discountPercent);
             }
 
@@ -127,7 +137,8 @@ public class OrderService {
 
         if (voucher != null) {
             validateVoucher(voucher, totalBill);
-            BigDecimal discount = totalBill.multiply(BigDecimal.valueOf(voucher.getReducedPercent()).divide(BigDecimal.valueOf(100)));
+            BigDecimal discount = totalBill
+                    .multiply(BigDecimal.valueOf(voucher.getReducedPercent()).divide(BigDecimal.valueOf(100)));
             if (discount.compareTo(voucher.getMaxDiscount()) > 0) {
                 discount = voucher.getMaxDiscount();
             }
@@ -141,6 +152,11 @@ public class OrderService {
         orderDetailRepository.saveAll(orderDetails);
         productDetailRepository.saveAll(updatedProducts);
 
+        // Ghi log tạo đơn hàng
+        auditLogService.log("Order", order.getId(), "CREATE", null,
+                null, OrderMapper.toOrderResponse(order),
+                "Tạo mới đơn hàng: " + order.getOrderCode());
+
         return order;
     }
 
@@ -149,14 +165,22 @@ public class OrderService {
      */
     @Transactional
     public OrderResponse updateOrderStatusAfterPayment(Integer id) {
-        Order order = orderRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + id));
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + id));
 
         if (order.getStatusOrder() == 5) {
             throw new RuntimeException("Đơn hàng đã được thanh toán trước đó!");
         }
 
+        int oldStatus = order.getStatusOrder();
         order.setStatusOrder(5);
         order = orderRepository.save(order);
+
+        // Ghi log
+        auditLogService.log("Order", order.getId(), "UPDATE_STATUS", null,
+                oldStatus, 5,
+                "Cập nhật trạng thái hóa đơn sau thanh toán: " + order.getOrderCode());
+
         return OrderMapper.toOrderResponse(order);
     }
 
@@ -179,15 +203,21 @@ public class OrderService {
         List<Order> expiredOrders = orderRepository.findUnpaidOrders(bankTransferDeadline, eWalletDeadline);
 
         if (!expiredOrders.isEmpty()) {
-            expiredOrders.forEach(order -> order.setStatusOrder(-1)); // Cập nhật trạng thái tất cả đơn hàng hết hạn
-            orderRepository.saveAll(expiredOrders); // Lưu tất cả đơn hàng chỉ với 1 lần truy vấn
+            for (Order order : expiredOrders) {
+                int oldStatus = order.getStatusOrder();
+                order.setStatusOrder(-1);
+                orderRepository.save(order);
+
+                auditLogService.log("Order", order.getId(), "SYSTEM_CANCEL", "SYSTEM",
+                        oldStatus, -1, "Hệ thống tự động hủy đơn hàng do quá hạn thanh toán: " + order.getOrderCode());
+            }
         }
     }
 
-
     @Transactional
     public OrderResponse toggleStatusOrder(Integer id) {
-        Order order = orderRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + id));
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + id));
 
         int currentStatus = order.getStatusOrder();
         switch (currentStatus) {
@@ -217,44 +247,59 @@ public class OrderService {
                 throw new IllegalStateException("Trạng thái đơn hàng không hợp lệ.");
         }
         order = orderRepository.save(order);
+
+        // Ghi log
+        auditLogService.log("Order", order.getId(), "UPDATE_STATUS", null,
+                currentStatus, order.getStatusOrder(),
+                "Chuyển trạng thái hóa đơn: " + order.getOrderCode());
+
         return OrderMapper.toOrderResponse(order);
     }
 
     private void updateStock(Order order) {
         List<OrderDetail> orderDetails = orderDetailRepository.findByOrderId(order.getId());
         for (OrderDetail orderDetail : orderDetails) {
-            ProductDetail productDetail = productDetailRepository.findById(orderDetail.getProductDetail().getId()).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm với ID: " + orderDetail.getProductDetail().getId()));
+            ProductDetail productDetail = productDetailRepository.findById(orderDetail.getProductDetail().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Không tìm thấy sản phẩm với ID: " + orderDetail.getProductDetail().getId()));
             if (productDetail.getQuantity() < orderDetail.getQuantity()) {
-                throw new InsufficientStockException("Không đủ hàng trong kho: " + productDetail.getProductDetailCode());
+                throw new InsufficientStockException(
+                        "Không đủ hàng trong kho: " + productDetail.getProductDetailCode());
             }
             productDetail.setQuantity(productDetail.getQuantity() - orderDetail.getQuantity());
             productDetailRepository.save(productDetail);
         }
     }
 
-
     @Transactional
     public OrderResponse updateOrderStatus(Integer id, int status) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hóa đơn với id: " + id));
 
-        if (status < -1 || status > 5) {
+        if (status < -1 || status > 8) {
             throw new IllegalArgumentException("Trạng thái không hợp lệ: " + status);
         }
 
+        int oldStatus = order.getStatusOrder();
         order.setStatusOrder(status);
         order = orderRepository.save(order);
+
+        // Ghi log
+        auditLogService.log("Order", order.getId(), "UPDATE_STATUS", null,
+                oldStatus, status,
+                "Cập nhật trạng thái đơn hàng: " + order.getOrderCode());
+
         return OrderMapper.toOrderResponse(order);
     }
 
-
     // hoa don trong
+    @Transactional
     public Order createEmptyOrder(Customer customer, Employee employee, Integer paymentMethod) {
         // Tạo một đơn hàng mới
         Order order = new Order();
 
         // Gán các giá trị bắt buộc cho đơn hàng
-        order.setOrderCode(UUID.randomUUID().toString());  // Tạo mã đơn hàng duy nhất (orderCode)
+        order.setOrderCode(UUID.randomUUID().toString()); // Tạo mã đơn hàng duy nhất (orderCode)
         order.setCreateDate(LocalDateTime.now()); // Thời gian tạo đơn hàng
         order.setTotalAmount(0); // Tổng tiền ban đầu là 0
         order.setTotalBill(BigDecimal.ZERO); // Tổng hóa đơn ban đầu là 0
@@ -268,13 +313,16 @@ public class OrderService {
         // Lưu đơn hàng vào cơ sở dữ liệu
         order = orderRepository.save(order); // Lưu vào cơ sở dữ liệu thông qua repository
 
+        auditLogService.log("Order", order.getId(), "CREATE_EMPTY", null,
+                null, OrderMapper.toOrderResponse(order),
+                "Tạo hóa đơn trống (chờ xử lý): " + order.getOrderCode());
+
         return order;
     }
 
-
     public Order findById(Integer orderId) {
-        Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
         return order;
     }
 }
-

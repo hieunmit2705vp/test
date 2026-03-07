@@ -24,9 +24,6 @@ import java.util.UUID;
 public class SalePOSService {
 
     private static final Logger logger = LoggerFactory.getLogger(SalePOSService.class);
-    private static final String VIETQR_API_URL = "https://img.vietqr.io/image/";
-    private static final String BANK_BIN = "970436"; // BIN của Vietcombank
-    private static final String ACCOUNT_NUMBER = "1040023014"; // Số tài khoản của bạn
 
     @Autowired
     private OrderRepository orderRepository;
@@ -58,6 +55,9 @@ public class SalePOSService {
     @Autowired
     private VoucherRepository voucherRepository;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     public Order findOrderById(Integer orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đơn hàng #" + orderId));
@@ -83,8 +83,9 @@ public class SalePOSService {
             throw new IllegalArgumentException("Voucher không tồn tại.");
         }
 
-        if (paymentMethod == null || paymentMethod < 0 || paymentMethod > 1) { // Kiểm tra giá trị hợp lệ
-            throw new IllegalArgumentException("Phương thức thanh toán không hợp lệ. Chỉ chấp nhận 0 (Tiền mặt) hoặc 1 (VNPay).");
+        if (paymentMethod == null || paymentMethod != 0) { // Chỉ chấp nhận tiền mặt (0)
+            throw new IllegalArgumentException(
+                    "Phương thức thanh toán không hợp lệ. Tại quầy chỉ chấp nhận 0 (Tiền mặt).");
         }
 
         // Nếu khách hàng là null, gán khách hàng vãng lai (ID = -1)
@@ -110,29 +111,14 @@ public class SalePOSService {
 
         Order savedOrder = orderRepository.save(order);
         logger.info("Đã tạo đơn hàng. Order ID: {}, Order Code: {}", savedOrder.getId(), savedOrder.getOrderCode());
+
+        // Ghi log lịch sử hệ thống
+        auditLogService.log("Order", savedOrder.getId(), "CREATE",
+                employee.getFullname(), null, savedOrder,
+                "Tạo mới hóa đơn chờ POS: " + savedOrder.getOrderCode());
+
         return savedOrder;
 
-    }
-
-    public String createVietQRPaymentUrl(Integer orderId) {
-        logger.info("Đang tạo URL VietQR cho đơn hàng ID: {}", orderId);
-
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
-
-        // Tính tổng tiền cần thanh toán (sau khi giảm giá)
-        updateOrderTotal(order);
-        BigDecimal amount = order.getTotalBill();
-        String transactionId = "HD1-" + order.getOrderCode(); // Mã giao dịch duy nhất
-
-        // Tạo URL VietQR
-        String vietQrUrl = String.format(
-                "%s%s-%s-qr_only.png?amount=%s&addInfo=%s",
-                VIETQR_API_URL, BANK_BIN, ACCOUNT_NUMBER, amount.toString(), transactionId
-        );
-
-        logger.info("URL VietQR đã tạo: {}", vietQrUrl);
-        return vietQrUrl;
     }
 
 
@@ -150,13 +136,16 @@ public class SalePOSService {
 
         // Tìm sản phẩm theo ID
         ProductDetail productDetail = productDetailService.findById(detailReq.getProductDetailId())
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sản phẩm với ID: " + detailReq.getProductDetailId()));
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Không tìm thấy sản phẩm với ID: " + detailReq.getProductDetailId()));
 
-        // Kiểm tra tồn kho trước khi thêm vào giỏ hàng (tránh cập nhật sai do giao dịch đồng thời)
+        // Kiểm tra tồn kho trước khi thêm vào giỏ hàng (tránh cập nhật sai do giao dịch
+        // đồng thời)
         synchronized (productDetail) {
             if (productDetail.getQuantity() < detailReq.getQuantity()) {
                 logger.error("Sản phẩm {} không đủ hàng.", productDetail.getProduct().getProductName());
-                throw new IllegalArgumentException("Sản phẩm " + productDetail.getProduct().getProductName() + " không đủ hàng!");
+                throw new IllegalArgumentException(
+                        "Sản phẩm " + productDetail.getProduct().getProductName() + " không đủ hàng!");
             }
 
             OrderDetail existingOrderDetail = order.getOrderDetails().stream()
@@ -167,7 +156,8 @@ public class SalePOSService {
             if (existingOrderDetail != null) {
                 existingOrderDetail.setQuantity(existingOrderDetail.getQuantity() + detailReq.getQuantity());
                 orderDetailRepository.save(existingOrderDetail);
-                logger.info("Cập nhật số lượng sản phẩm trong giỏ hàng thành công. Order Detail ID: {}", existingOrderDetail.getId());
+                logger.info("Cập nhật số lượng sản phẩm trong giỏ hàng thành công. Order Detail ID: {}",
+                        existingOrderDetail.getId());
             } else {
                 OrderDetail newOrderDetail = new OrderDetail();
                 newOrderDetail.setOrder(order);
@@ -179,7 +169,9 @@ public class SalePOSService {
                 if (productDetail.getPromotion() != null && productDetail.getPromotion().getStatus()
                         && !productDetail.getPromotion().getStartDate().isAfter(LocalDateTime.now())
                         && !productDetail.getPromotion().getEndDate().isBefore(LocalDateTime.now())) {
-                    BigDecimal discountPercentage = BigDecimal.valueOf(productDetail.getPromotion().getPromotionPercent()).divide(BigDecimal.valueOf(100));
+                    BigDecimal discountPercentage = BigDecimal
+                            .valueOf(productDetail.getPromotion().getPromotionPercent())
+                            .divide(BigDecimal.valueOf(100));
                     BigDecimal discountAmount = price.multiply(discountPercentage);
                     price = price.subtract(discountAmount);
                 }
@@ -190,12 +182,22 @@ public class SalePOSService {
                 logger.info("Thêm mới sản phẩm vào giỏ hàng thành công. Order Detail ID: {}", newOrderDetail.getId());
             }
 
-            // Cập nhật tổng tiền (totalBill) và tổng số lượng (totalAmount) của đơn hàng sau khi thêm sản phẩm vào giỏ hàng.
+            // Cập nhật tổng tiền (totalBill) và tổng số lượng (totalAmount) của đơn hàng
+            // sau khi thêm sản phẩm vào giỏ hàng.
             updateOrderTotal(order);
 
             // Lưu đơn hàng sau khi cập nhật giỏ hàng
-            OrderResponse orderResponse = OrderMapper.toOrderResponse(orderRepository.save(order));
+            Order savedOrder = orderRepository.save(order);
+            OrderResponse orderResponse = OrderMapper.toOrderResponse(savedOrder);
             logger.info("Cập nhật tổng tiền và tổng số lượng thành công. Order ID: {}", order.getId());
+
+            // Ghi log thêm sản phẩm
+            auditLogService.log("Order", order.getId(), "ADD_PRODUCT",
+                    order.getEmployee() != null ? order.getEmployee().getFullname() : "POS",
+                    null, orderResponse,
+                    "Thêm sản phẩm vào giỏ hàng POS: " + productDetail.getProduct().getProductName() + " (SL: "
+                            + detailReq.getQuantity() + ")");
+
             return orderResponse;
         }
     }
@@ -244,10 +246,13 @@ public class SalePOSService {
                 Promotion promotion = productDetail.getPromotion();
                 if (!promotion.getStatus()) {
                     logger.warn("⚠️ [PROMOTION] Khuyến mãi {} bị vô hiệu hóa", promotion.getPromotionName());
-                } else if (promotion.getStartDate().isAfter(LocalDateTime.now()) || promotion.getEndDate().isBefore(LocalDateTime.now())) {
-                    logger.warn("⚠️ [PROMOTION] Khuyến mãi {} chưa đến hạn hoặc đã hết hạn", promotion.getPromotionName());
+                } else if (promotion.getStartDate().isAfter(LocalDateTime.now())
+                        || promotion.getEndDate().isBefore(LocalDateTime.now())) {
+                    logger.warn("⚠️ [PROMOTION] Khuyến mãi {} chưa đến hạn hoặc đã hết hạn",
+                            promotion.getPromotionName());
                 } else {
-                    BigDecimal discountPercentage = BigDecimal.valueOf(promotion.getPromotionPercent()).divide(BigDecimal.valueOf(100));
+                    BigDecimal discountPercentage = BigDecimal.valueOf(promotion.getPromotionPercent())
+                            .divide(BigDecimal.valueOf(100));
                     BigDecimal discountAmount = price.multiply(discountPercentage);
                     price = price.subtract(discountAmount);
 
@@ -283,7 +288,8 @@ public class SalePOSService {
         order.setTotalBill(totalBill);
         order.setTotalAmount(totalAmount);
 
-        logger.info("✅ [UPDATE ORDER] Order ID: {}, Trước giảm giá (originalTotal): {}, Sau khuyến mãi: {}, Sau voucher: {}, Tổng số lượng: {}",
+        logger.info(
+                "✅ [UPDATE ORDER] Order ID: {}, Trước giảm giá (originalTotal): {}, Sau khuyến mãi: {}, Sau voucher: {}, Tổng số lượng: {}",
                 order.getId(), originalTotal, totalBill, totalBill, totalAmount);
     }
 
@@ -293,7 +299,8 @@ public class SalePOSService {
      */
     @Transactional
     public OrderResponse updateOrderStatusAfterPayment(Integer orderId, Integer customerId, Integer voucherId) {
-        logger.info("Bắt đầu cập nhật trạng thái đơn hàng sau thanh toán. Order ID: {}, Customer ID: {}, Voucher ID: {}",
+        logger.info(
+                "Bắt đầu cập nhật trạng thái đơn hàng sau thanh toán. Order ID: {}, Customer ID: {}, Voucher ID: {}",
                 orderId, customerId, voucherId);
 
         Order order = orderRepository.findById(orderId)
@@ -325,14 +332,16 @@ public class SalePOSService {
             int orderedQuantity = orderDetail.getQuantity();
 
             if (quantity < orderedQuantity) {
-                throw new IllegalArgumentException("Sản phẩm " + productDetail.getProduct().getProductName() + " không đủ hàng trong kho!");
+                throw new IllegalArgumentException(
+                        "Sản phẩm " + productDetail.getProduct().getProductName() + " không đủ hàng trong kho!");
             }
 
             productDetail.setQuantity(quantity - orderedQuantity);
             productDetailService.update(productDetail);
 
             logger.info("Cập nhật tồn kho sản phẩm: {} | Trước: {} | Sau: {} | Đã bán: {}",
-                    productDetail.getProduct().getProductName(), quantity, productDetail.getQuantity(), orderDetail.getQuantity());
+                    productDetail.getProduct().getProductName(), quantity, productDetail.getQuantity(),
+                    orderDetail.getQuantity());
 
         }
 
@@ -340,14 +349,21 @@ public class SalePOSService {
         updateOrderTotal(order);
 
         // Cập nhật trạng thái đơn hàng thành "Hoàn thành"
+        Integer oldStatus = order.getStatusOrder();
         order.setStatusOrder(5);
-        OrderResponse response = OrderMapper.toOrderResponse(orderRepository.save(order));
+        Order savedOrder = orderRepository.save(order);
+        OrderResponse response = OrderMapper.toOrderResponse(savedOrder);
+
         logger.info("Thanh toán thành công! Order ID: {}, Tổng tiền: {}, Tổng số lượng: {}",
                 order.getId(), order.getTotalBill(), order.getTotalAmount());
 
+        // Ghi log lịch sử hệ thống
+        auditLogService.log("Order", savedOrder.getId(), "PAYMENT",
+                order.getEmployee().getFullname(), oldStatus, "HOÀN THÀNH",
+                "Thanh toán thành công hóa đơn: " + savedOrder.getOrderCode());
+
         return response;
     }
-
 
     @Transactional
     public Order thanhToan(OrderPOSCreateRequest request) {
@@ -359,19 +375,21 @@ public class SalePOSService {
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn."));
 
-
         // Cập nhật customerId
         if (request.getCustomerId() != null && request.getCustomerId() != order.getCustomer().getId()) {
             Customer customer = customerService.findById(request.getCustomerId())
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khách hàng với ID: " + request.getCustomerId()));
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Không tìm thấy khách hàng với ID: " + request.getCustomerId()));
             order.setCustomer(customer);
             logger.info("Cập nhật customer_id thành: {}", request.getCustomerId());
         }
 
         // Cập nhật voucherId
-        if (request.getVoucherId() != null && (order.getVoucher() == null || request.getVoucherId() != order.getVoucher().getId())) {
+        if (request.getVoucherId() != null
+                && (order.getVoucher() == null || request.getVoucherId() != order.getVoucher().getId())) {
             Voucher voucher = voucherService.findById(request.getVoucherId())
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy voucher với ID: " + request.getVoucherId()));
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Không tìm thấy voucher với ID: " + request.getVoucherId()));
             order.setVoucher(voucher);
             logger.info("Cập nhật voucher_id thành: {}", request.getVoucherId());
         }
@@ -395,34 +413,41 @@ public class SalePOSService {
 
     /**
      * Cập nhật phương thức thanh toán của đơn hàng
-     * @param orderId ID của đơn hàng
-     * @param paymentMethod Phương thức thanh toán mới (0: Tiền mặt, 1: VNPay)
-     * @return OrderResponse chứa thông tin đơn hàng đã cập nhật
      */
     @Transactional
     public OrderResponse updatePaymentMethod(Integer orderId, Integer paymentMethod) {
-        logger.info("Bắt đầu cập nhật phương thức thanh toán. Order ID: {}, Payment Method: {}", orderId, paymentMethod);
+        logger.info("Bắt đầu cập nhật phương thức thanh toán. Order ID: {}, Payment Method: {}", orderId,
+                paymentMethod);
 
         // Tìm đơn hàng theo ID
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
+        // Capture old method
+        Integer oldMethod = order.getPaymentMethod();
+
         // Kiểm tra xem đơn hàng có phải là đơn POS không
         if (!order.getKindOfOrder()) {
-            logger.error("Không thể cập nhật phương thức thanh toán cho đơn hàng online qua chức năng POS. Order ID: {}", orderId);
+            logger.error(
+                    "Không thể cập nhật phương thức thanh toán cho đơn hàng online qua chức năng POS. Order ID: {}",
+                    orderId);
             throw new IllegalStateException("Chỉ có thể cập nhật phương thức thanh toán cho đơn hàng POS.");
         }
 
         // Kiểm tra trạng thái đơn hàng
         if (order.getStatusOrder() == 5 || order.getStatusOrder() == -1) {
-            logger.error("Không thể cập nhật phương thức thanh toán cho đơn hàng đã hoàn thành hoặc đã hủy. Order ID: {}", orderId);
-            throw new IllegalStateException("Chỉ có thể cập nhật phương thức thanh toán cho đơn hàng chưa hoàn thành hoặc chưa bị hủy.");
+            logger.error(
+                    "Không thể cập nhật phương thức thanh toán cho đơn hàng đã hoàn thành hoặc đã hủy. Order ID: {}",
+                    orderId);
+            throw new IllegalStateException(
+                    "Chỉ có thể cập nhật phương thức thanh toán cho đơn hàng chưa hoàn thành hoặc chưa bị hủy.");
         }
 
         // Kiểm tra phương thức thanh toán hợp lệ
-        if (paymentMethod == null || paymentMethod < 0 || paymentMethod > 1) {
+        if (paymentMethod == null || paymentMethod != 0) {
             logger.error("Phương thức thanh toán không hợp lệ: {}. Order ID: {}", paymentMethod, orderId);
-            throw new IllegalArgumentException("Phương thức thanh toán không hợp lệ. Chỉ chấp nhận 0 (Tiền mặt) hoặc 1 (Chuyển khoản).");
+            throw new IllegalArgumentException(
+                    "Phương thức thanh toán không hợp lệ. Tại quầy chỉ chấp nhận 0 (Tiền mặt).");
         }
 
         // Cập nhật phương thức thanh toán
@@ -431,13 +456,21 @@ public class SalePOSService {
 
         // Lưu đơn hàng
         Order savedOrder = orderRepository.save(order);
-        logger.info("Cập nhật phương thức thanh toán thành công. Order ID: {}, Payment Method: {}", orderId, paymentMethod);
+        logger.info("Cập nhật phương thức thanh toán thành công. Order ID: {}, Payment Method: {}", orderId,
+                paymentMethod);
+
+        // Ghi log
+        auditLogService.log("Order", order.getId(), "UPDATE_PAYMENT_METHOD",
+                order.getEmployee() != null ? order.getEmployee().getFullname() : "POS",
+                oldMethod, paymentMethod,
+                "Cập nhật phương thức thanh toán cho hóa đơn: " + order.getOrderCode());
 
         return OrderMapper.toOrderResponse(savedOrder);
     }
 
     /**
      * Hủy đơn hàng POS
+     * 
      * @param orderId ID của đơn hàng cần hủy
      * @return OrderResponse chứa thông tin đơn hàng đã hủy
      */
@@ -462,12 +495,19 @@ public class SalePOSService {
             throw new IllegalStateException("Chỉ có thể hủy đơn hàng ở trạng thái 'Chờ thanh toán'.");
         }
 
+        int oldStatus = order.getStatusOrder();
         // Cập nhật trạng thái
         order.setStatusOrder(-1); // Đã hủy
 
         // Lưu đơn hàng
         Order savedOrder = orderRepository.save(order);
         logger.info("Hủy đơn hàng thành công. Order ID: {}, Trạng thái: -1", orderId);
+
+        // Ghi log
+        auditLogService.log("Order", order.getId(), "CANCEL",
+                order.getEmployee() != null ? order.getEmployee().getFullname() : "POS",
+                oldStatus, -1,
+                "Hủy hóa đơn POS: " + order.getOrderCode());
 
         return OrderMapper.toOrderResponse(savedOrder);
     }

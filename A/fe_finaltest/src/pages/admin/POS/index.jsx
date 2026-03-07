@@ -1863,7 +1863,6 @@ const SalePOSPage = () => {
               className="border p-2 w-full mt-1 rounded-md"
             >
               <option value="cash">Tiền mặt</option>
-              <option value="bank_transfer">Chuyển khoản</option>
             </select>
           </div>
 
@@ -1883,21 +1882,6 @@ const SalePOSPage = () => {
             </div>
           )}
 
-          {paymentMethod === "bank_transfer" && showOwnerQR && (
-            <div className="mt-4 text-center">
-              <p className="text-lg font-semibold mb-2">
-                Thanh toán chuyển khoản
-              </p>
-              <p className="text-sm mb-4">Vui lòng quét mã QR để thanh toán.</p>
-              <div className="bg-gray-100 p-4 rounded inline-block">
-                <img
-                  src="/public/Tung-QR.png"
-                  alt="Owner QR Code"
-                  className="w-48 h-48"
-                />
-              </div>
-            </div>
-          )}
 
           <button
             onClick={handlePayment}

@@ -27,6 +27,9 @@ public class VoucherService {
     @Autowired
     VoucherRepository voucherRepository;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     public Page<VoucherResponse> getAllVoucher(
             String search,
             int page,
@@ -35,11 +38,9 @@ public class VoucherService {
             String sortDir,
             Boolean status,
             BigDecimal minCondition,
-            Double reducedPercent
-    ) {
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
-                Sort.by(sortBy).ascending() :
-                Sort.by(sortBy).descending();
+            Double reducedPercent) {
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
         String formattedSearch = (search == null || search.isEmpty()) ? null : "%" + search.toLowerCase() + "%";
@@ -48,8 +49,7 @@ public class VoucherService {
                 status,
                 minCondition,
                 reducedPercent,
-                pageable
-        );
+                pageable);
 
         return voucherPage.map(VoucherMapper::toVoucherResponse);
     }
@@ -72,12 +72,21 @@ public class VoucherService {
         voucher.setStatus(voucherRequest.getStatus());
 
         voucher = voucherRepository.save(voucher);
+
+        // Ghi log
+        auditLogService.log("Voucher", voucher.getId(), "CREATE", null,
+                null, VoucherMapper.toVoucherResponse(voucher),
+                "Tạo mới Voucher: " + voucher.getVoucherCode());
+
         return VoucherMapper.toVoucherResponse(voucher);
     }
 
     public VoucherResponse updateVoucher(int id, VoucherUpdateRequest voucherUpdateRequest) {
         Voucher voucher = voucherRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Voucher không tồn tại với ID: " + id));
+
+        // Capture old state BEFORE modification
+        VoucherResponse oldState = VoucherMapper.toVoucherResponse(voucher);
 
         voucher.setVoucherName(voucherUpdateRequest.getVoucherName());
         voucher.setDescription(voucherUpdateRequest.getDescription());
@@ -88,6 +97,13 @@ public class VoucherService {
         voucher.setEndDate(voucherUpdateRequest.getEndDate());
 
         Voucher updatedVoucher = voucherRepository.save(voucher);
+
+        // Ghi log
+        auditLogService.log("Voucher", updatedVoucher.getId(), "UPDATE", null,
+                oldState,
+                VoucherMapper.toVoucherResponse(updatedVoucher),
+                "Cập nhật Voucher: " + updatedVoucher.getVoucherCode());
+
         return VoucherMapper.toVoucherResponse(updatedVoucher);
     }
 
@@ -96,8 +112,16 @@ public class VoucherService {
         Voucher voucher = voucherRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Voucher không có ID: " + id));
 
+        boolean oldStatus = voucher.getStatus();
         voucher.setStatus(!voucher.getStatus());
         voucher = voucherRepository.save(voucher);
+
+        // Ghi log
+        auditLogService.log("Voucher", voucher.getId(), "TOGGLE_STATUS", null,
+                oldStatus ? "Đang hoạt động" : "Ngừng hoạt động",
+                voucher.getStatus() ? "Đang hoạt động" : "Ngừng hoạt động",
+                "Thay đổi trạng thái Voucher: " + voucher.getVoucherCode());
+
         return VoucherMapper.toVoucherResponse(voucher);
     }
 
@@ -106,7 +130,13 @@ public class VoucherService {
         Voucher voucher = voucherRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Voucher không có ID: " + id));
 
+        VoucherResponse oldVoucherResponse = VoucherMapper.toVoucherResponse(voucher);
         voucherRepository.delete(voucher);
+
+        // Ghi log
+        auditLogService.log("Voucher", id, "DELETE", null,
+                oldVoucherResponse, null,
+                "Xóa Voucher: " + oldVoucherResponse.getVoucherCode());
     }
 
     public static String generateVoucherCode() {

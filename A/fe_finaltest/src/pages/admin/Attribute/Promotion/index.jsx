@@ -223,6 +223,7 @@ export default function Promotion() {
               <thead className="bg-[#1E3A8A] text-white uppercase text-sm leading-normal">
                 <tr>
                   <th className="py-4 px-6 font-semibold tracking-wider text-center w-16">STT</th>
+                  <th className="py-4 px-6 font-semibold tracking-wider text-center w-20">ID</th>
                   <th className="py-4 px-6 font-semibold tracking-wider">Tên KM</th>
                   <th className="py-4 px-6 font-semibold tracking-wider w-1/4">Mô tả</th>
                   <th className="py-4 px-6 font-semibold tracking-wider text-center">Giảm giá</th>
@@ -239,6 +240,9 @@ export default function Promotion() {
                     <tr key={item.id} className="border-b border-gray-200 hover:bg-indigo-50 transition-colors duration-200">
                       <td className="py-4 px-6 text-center font-medium">
                         {currentPage * pageSize + index + 1}
+                      </td>
+                      <td className="py-4 px-6 text-center font-bold text-gray-700">
+                        #{item.id}
                       </td>
                       <td className="py-4 px-6 font-semibold text-gray-800">
                         {item.promotionName}
@@ -285,7 +289,7 @@ export default function Promotion() {
                 })}
                 {promotions.length === 0 && (
                   <tr>
-                    <td colSpan="7" className="py-8 text-center text-gray-500 italic">
+                    <td colSpan="8" className="py-8 text-center text-gray-500 italic">
                       Không tìm thấy chương trình khuyến mãi nào
                     </td>
                   </tr>

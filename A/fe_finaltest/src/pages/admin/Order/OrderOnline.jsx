@@ -266,6 +266,12 @@ export default function OnlineOrder() {
                     </th>
                     <th
                       scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      ID
+                    </th>
+                    <th
+                      scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                       onClick={() => handleSort("orderCode")}
                     >
@@ -329,6 +335,9 @@ export default function OnlineOrder() {
                       >
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {index + 1}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-bold">
+                          #{item.id}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">

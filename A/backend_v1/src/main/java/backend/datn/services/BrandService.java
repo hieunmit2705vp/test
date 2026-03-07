@@ -30,13 +30,15 @@ public class BrandService {
     @Autowired
     private BrandRepository brandRepository;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     @Transactional(readOnly = true)
     public Page<BrandResponse> getAllBrand(String search, int page, int size, String sortBy, String sortDir) {
         logger.info("Fetching brands with search: {}, page: {}, size: {}, sortBy: {}, sortDir: {}",
                 search, page, size, sortBy, sortDir);
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
-                Sort.by(sortBy).ascending() :
-                Sort.by(sortBy).descending();
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -49,8 +51,8 @@ public class BrandService {
     @Transactional(readOnly = true)
     public BrandResponse getBrandById(int id) {
         logger.info("Fetching brand with id: {}", id);
-        Brand brand = brandRepository.findById(id).
-                orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có id: " + id));
+        Brand brand = brandRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thương hiệu có id: " + id));
         return BrandMapper.toBrandResponse(brand);
     }
 
@@ -59,7 +61,8 @@ public class BrandService {
         logger.info("Creating brand with name: {}", brandCreateRequest.getBrandName());
         if (brandRepository.existsByBrandName(brandCreateRequest.getBrandName())) {
             logger.warn("Brand with name {} already exists", brandCreateRequest.getBrandName());
-            throw new EntityAlreadyExistsException("Thương hiệu có tên: " + brandCreateRequest.getBrandName() + " đã tồn tại");
+            throw new EntityAlreadyExistsException(
+                    "Thương hiệu có tên: " + brandCreateRequest.getBrandName() + " đã tồn tại");
         }
 
         Brand brand = new Brand();
@@ -67,7 +70,12 @@ public class BrandService {
 
         brand = brandRepository.save(brand);
         logger.info("Brand created successfully with id: {}", brand.getId());
-        return BrandMapper.toBrandResponse(brand);
+
+        BrandResponse response = BrandMapper.toBrandResponse(brand);
+        auditLogService.log("Brand", brand.getId(), "CREATE", null,
+                null, response, "Tạo mới thương hiệu: " + brand.getBrandName());
+
+        return response;
     }
 
     @Transactional
@@ -76,15 +84,25 @@ public class BrandService {
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thương hiệu có id: " + id));
 
-        if (!brand.getBrandName().equalsIgnoreCase(brandUpdateRequest.getBrandName()) && brandRepository.existsByBrandName(brandUpdateRequest.getBrandName())) {
+        // Capture state
+        BrandResponse oldState = BrandMapper.toBrandResponse(brand);
+
+        if (!brand.getBrandName().equalsIgnoreCase(brandUpdateRequest.getBrandName())
+                && brandRepository.existsByBrandName(brandUpdateRequest.getBrandName())) {
             logger.warn("Brand with name {} already exists", brandUpdateRequest.getBrandName());
-            throw new EntityAlreadyExistsException("Thương hiệu có tên: " + brandUpdateRequest.getBrandName() + " đã tồn tại");
+            throw new EntityAlreadyExistsException(
+                    "Thương hiệu có tên: " + brandUpdateRequest.getBrandName() + " đã tồn tại");
         }
 
         brand.setBrandName(brandUpdateRequest.getBrandName());
         brand = brandRepository.save(brand);
         logger.info("Brand updated successfully with id: {}", brand.getId());
-        return BrandMapper.toBrandResponse(brand);
+
+        BrandResponse newState = BrandMapper.toBrandResponse(brand);
+        auditLogService.log("Brand", brand.getId(), "UPDATE", null,
+                oldState, newState, "Cập nhật thương hiệu: " + brand.getBrandName());
+
+        return newState;
     }
 
     @Transactional
@@ -93,16 +111,22 @@ public class BrandService {
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thương hiệu có id: " + id));
 
-        boolean newStatus = !brand.getStatus(); // Tính trạng thái mới trước khi thay đổi
+        boolean oldStatus = brand.getStatus();
+        boolean newStatus = !oldStatus; // Tính trạng thái mới trước khi thay đổi
         if (newStatus == false && !brand.getListProducts().isEmpty()) { // Ngăn chặn vô hiệu hóa nếu có sản phẩm
             logger.warn("Cannot deactivate brand with id {} because it has associated products", id);
             throw new IllegalStateException("Không thể vô hiệu hóa thương hiệu đang có sản phẩm liên kết");
         }
 
-        brand.setStatus(!brand.getStatus());
+        brand.setStatus(newStatus);
         brand = brandRepository.save(brand);
         logger.info("Brand status toggled successfully for id: {}", id);
-        return BrandMapper.toBrandResponse(brand);
+
+        BrandResponse response = BrandMapper.toBrandResponse(brand);
+        auditLogService.log("Brand", brand.getId(), "TOGGLE_STATUS", null,
+                oldStatus, newStatus, "Đổi trạng thái thương hiệu: " + brand.getBrandName());
+
+        return response;
     }
 
     @Transactional
@@ -116,9 +140,13 @@ public class BrandService {
             throw new IllegalStateException("Không thể xóa mềm thương hiệu đang có sản phẩm liên kết");
         }
 
+        BrandResponse oldState = BrandMapper.toBrandResponse(brand);
         brand.setStatus(false);
         brandRepository.save(brand);
         logger.info("Brand soft deleted successfully with id: {}", id);
+
+        auditLogService.log("Brand", id, "SOFT_DELETE", null,
+                oldState, null, "Xóa mềm thương hiệu: " + brand.getBrandName());
     }
 
     // Liệt kê danh sách sản phẩm ở trạng thái đang bán của 1 thương hiệu
@@ -137,7 +165,7 @@ public class BrandService {
     public long getProductCountWithActiveStatusByBrandId(Integer id, boolean onlyActive) {
         logger.info("Fetching product count for brand with id: {}", id);
         Brand brand = brandRepository.findById(id)
-                .orElseThrow(()-> new EntityNotFoundException("Không tìm thấy thương hiệu có id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thương hiệu có id: " + id));
         return brand.getAllProductsInBrand(onlyActive).size();
     }
 }

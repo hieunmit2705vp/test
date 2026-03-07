@@ -7,6 +7,7 @@ import GHNService from "../../services/GHNService";
 import PaymentService from "../../services/PaymentService";
 import LoginInfoService from "../../services/LoginInfoService";
 import VoucherService from "../../services/VoucherServices";
+import CustomerAddressService from "../../services/CustomerAddressService";
 import { FaMoneyBillWave, FaCreditCard, FaMapMarkerAlt, FaUser, FaPhoneAlt, FaEnvelope, FaTruck, FaTicketAlt, FaShieldAlt } from "react-icons/fa";
 
 function Payment() {
@@ -217,22 +218,45 @@ function Payment() {
         items: items.map(i => ({ name: i.productName, quantity: i.quantity }))
       });
       setShippingFee(response.data.total);
-
-      const newAddr = {
-        id: Date.now(),
-        addressDetail: customAddress,
-        wardName: selectedWard.label,
+      
+      const addrData = {
+        customerId: currentUser?.id,
+        provinceId: selectedProvince.value,
+        provinceName: selectedProvince.label,
+        districtId: selectedDistrict.value,
         districtName: selectedDistrict.label,
-        provinceName: selectedProvince.label
+        wardId: selectedWard.value,
+        wardName: selectedWard.label,
+        addressDetail: customAddress
       };
+
+      let newAddr;
+      if (currentUser?.id && currentUser.id !== -1) {
+        // Nếu đã đăng nhập, lưu vào cơ sở dữ liệu
+        const saveResponse = await CustomerAddressService.create(addrData);
+        newAddr = saveResponse.data;
+        toast.success("Đã lưu địa chỉ vào tài khoản");
+      } else {
+        // Khách vãng lai, chỉ lưu tạm vào state
+        newAddr = {
+          id: Date.now(),
+          ...addrData
+        };
+      }
+
       const formatted = `${newAddr.addressDetail}, ${newAddr.wardName}, ${newAddr.districtName}, ${newAddr.provinceName}`;
       const addrOption = { value: newAddr.id, label: formatted, fullAddress: newAddr };
 
-      setUserAddresses([...userAddresses, addrOption]);
+      setUserAddresses(prev => [...prev, addrOption]);
       setSelectedAddress(addrOption);
       setIsModalOpen(false);
+      setCustomAddress(""); // Reset form sau khi thêm
+      setSelectedProvince(null);
+      setSelectedDistrict(null);
+      setSelectedWard(null);
     } catch (e) {
-      toast.error("Không thể tính phí vận chuyển");
+      console.error("Error in handleCalculateShippingFee:", e);
+      toast.error("Không thể lưu địa chỉ hoặc tính phí vận chuyển");
     }
   };
 
@@ -254,12 +278,7 @@ function Payment() {
       const response = await PaymentService.createOrder(orderData);
       if (response?.data?.id) {
         toast.success("Đặt hàng thành công!");
-        if (paymentMethod === "vnpay") {
-          const url = await PaymentService.createPaymentUrl(response.data.orderCode);
-          window.location.href = url;
-        } else {
-          setTimeout(() => navigate("/"), 2000);
-        }
+        setTimeout(() => navigate("/"), 2000);
       } else {
         toast.error("Đặt hàng thất bại");
       }
@@ -389,149 +408,135 @@ function Payment() {
                   </div>
                 </div>
 
-                <div
-                  onClick={() => setPaymentMethod('vnpay')}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3
-                                ${paymentMethod === 'vnpay'
-                      ? 'border-[#1E3A8A] bg-blue-50/50'
-                      : 'border-gray-100 hover:border-blue-200 bg-white'}
-                            `}
-                >
-                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl shrink-0"><FaCreditCard /></div>
-                  <div>
-                    <p className="font-bold text-gray-800">VNPay</p>
-                    <p className="text-xs text-gray-500">Thanh toán qua ví điện tử</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Order Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sticky top-24">
-              <h2 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b border-gray-100">Đơn hàng ({totalItems} sản phẩm)</h2>
-
-              <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar mb-6 pr-2">
-                {items.map(item => (
-                  <div key={item.id} className="flex gap-3">
-                    <div className="w-16 h-16 rounded-lg border border-gray-200 overflow-hidden shrink-0">
-                      <img src={item.photo} alt="" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-sm font-bold text-gray-800 line-clamp-1">{item.productName}</h3>
-                      <p className="text-xs text-gray-500">{item.productDetailName}</p>
-                      <div className="flex justify-between items-center mt-1">
-                        <p className="text-xs font-semibold text-gray-600">x{item.quantity}</p>
-                        <p className="text-sm font-bold text-[#1E3A8A]">{(item.discountPrice || item.price).toLocaleString()}₫</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Voucher */}
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-2 text-sm font-bold text-gray-700">
-                  <FaTicketAlt className="text-[#1E3A8A]" /> Mã giảm giá
-                </div>
-                <Select
-                  options={vouchers}
-                  value={selectedVoucher}
-                  onChange={setSelectedVoucher}
-                  placeholder="Chọn mã giảm giá..."
-                  className="text-sm"
-                />
-              </div>
-
-              {/* Totals */}
-              <div className="space-y-2 pt-4 border-t border-gray-100 text-sm">
-                <div className="flex justify-between text-gray-600">
-                  <span>Tạm tính</span>
-                  <span className="font-semibold">{totalAmount.toLocaleString()}₫</span>
-                </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>Phí vận chuyển</span>
-                  <span className="font-semibold">{shippingFee.toLocaleString()}₫</span>
-                </div>
-                {calculateVoucherDiscount() > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Giảm giá</span>
-                    <span className="font-bold">-{calculateVoucherDiscount().toLocaleString()}₫</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center pt-4 mt-2 border-t border-gray-100">
-                  <span className="text-base font-bold text-gray-800">Tổng cộng</span>
-                  <span className="text-2xl font-black text-[#1E3A8A]">{finalTotal.toLocaleString()}₫</span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  if (!formData.phone || !selectedAddress) {
-                    toast.error("Vui lòng điền đủ thông tin giao hàng");
-                    return;
-                  }
-                  setIsConfirmModalOpen(true);
-                }}
-                className="w-full mt-6 py-4 bg-[#1E3A8A] text-white rounded-xl font-bold text-lg shadow-lg hover:bg-blue-800 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
-              >
-                Đặt Hàng <FaTruck />
-              </button>
-
-              <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
-                <FaShieldAlt className="text-green-500" /> Thông tin được bảo mật tuyệt đối
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Address Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
-              <h2 className="text-xl font-bold text-[#1E3A8A] mb-4">Thêm địa chỉ mới</h2>
-              <div className="space-y-4">
-                <Select options={provinces} value={selectedProvince} onChange={handleProvinceChange} placeholder="Tỉnh/Thành phố" />
-                <Select options={districts} value={selectedDistrict} onChange={handleDistrictChange} placeholder="Quận/Huyện" />
-                <Select options={wards} value={selectedWard} onChange={handleWardChange} placeholder="Phường/Xã" />
-                <input
-                  type="text"
-                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-[#1E3A8A]"
-                  placeholder="Số nhà, tên đường..."
-                  value={customAddress}
-                  onChange={e => setCustomAddress(e.target.value)}
-                />
-                <div className="flex gap-3 pt-4">
-                  <button onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 bg-gray-100 rounded-lg font-bold text-gray-600 hover:bg-gray-200">Hủy</button>
-                  <button onClick={handleCalculateShippingFee} className="flex-1 py-2.5 bg-[#1E3A8A] text-white rounded-lg font-bold hover:bg-blue-800">Xác nhận</button>
+        {/* Right Column: Order Summary */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sticky top-24">
+            <h2 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b border-gray-100">Đơn hàng ({totalItems} sản phẩm)</h2>
+
+            <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar mb-6 pr-2">
+              {items.map(item => (
+                <div key={item.id} className="flex gap-3">
+                  <div className="w-16 h-16 rounded-lg border border-gray-200 overflow-hidden shrink-0">
+                    <img src={item.photo} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-bold text-gray-800 line-clamp-1">{item.productName}</h3>
+                    <p className="text-xs text-gray-500">{item.productDetailName}</p>
+                    <div className="flex justify-between items-center mt-1">
+                      <p className="text-xs font-semibold text-gray-600">x{item.quantity}</p>
+                      <p className="text-sm font-bold text-[#1E3A8A]">{(item.discountPrice || item.price).toLocaleString()}₫</p>
+                    </div>
+                  </div>
                 </div>
+              ))}
+            </div>
+
+            {/* Voucher */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-2 text-sm font-bold text-gray-700">
+                <FaTicketAlt className="text-[#1E3A8A]" /> Mã giảm giá
+              </div>
+              <Select
+                options={vouchers}
+                value={selectedVoucher}
+                onChange={setSelectedVoucher}
+                placeholder="Chọn mã giảm giá..."
+                className="text-sm"
+              />
+            </div>
+
+            {/* Totals */}
+            <div className="space-y-2 pt-4 border-t border-gray-100 text-sm">
+              <div className="flex justify-between text-gray-600">
+                <span>Tạm tính</span>
+                <span className="font-semibold">{totalAmount.toLocaleString()}₫</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Phí vận chuyển</span>
+                <span className="font-semibold">{shippingFee.toLocaleString()}₫</span>
+              </div>
+              {calculateVoucherDiscount() > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Giảm giá</span>
+                  <span className="font-bold">-{calculateVoucherDiscount().toLocaleString()}₫</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-4 mt-2 border-t border-gray-100">
+                <span className="text-base font-bold text-gray-800">Tổng cộng</span>
+                <span className="text-2xl font-black text-[#1E3A8A]">{finalTotal.toLocaleString()}₫</span>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Confirm Modal */}
-        {isConfirmModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-[#1E3A8A] text-2xl">
-                <FaMoneyBillWave />
-              </div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">Xác nhận đơn hàng</h2>
-              <p className="text-gray-500 mb-6">Bạn có chắc chắn muốn đặt đơn hàng này với tổng số tiền là <span className="font-bold text-[#1E3A8A]">{finalTotal.toLocaleString()}₫</span>?</p>
+            <button
+              onClick={() => {
+                if (!formData.phone || !selectedAddress) {
+                  toast.error("Vui lòng điền đủ thông tin giao hàng");
+                  return;
+                }
+                setIsConfirmModalOpen(true);
+              }}
+              className="w-full mt-6 py-4 bg-[#1E3A8A] text-white rounded-xl font-bold text-lg shadow-lg hover:bg-blue-800 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+            >
+              Đặt Hàng <FaTruck />
+            </button>
 
-              <div className="flex gap-3">
-                <button onClick={() => setIsConfirmModalOpen(false)} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-gray-600 hover:bg-gray-200">Kiểm tra lại</button>
-                <button onClick={handleConfirmOrder} disabled={isOrdering} className="flex-1 py-3 bg-[#1E3A8A] text-white rounded-xl font-bold hover:bg-blue-800 disabled:opacity-50">
-                  {isOrdering ? "Đang xử lý..." : "Đồng ý"}
-                </button>
-              </div>
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
+              <FaShieldAlt className="text-green-500" /> Thông tin được bảo mật tuyệt đối
             </div>
           </div>
-        )}
+        </div>
       </div>
+
+      {/* Address Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <h2 className="text-xl font-bold text-[#1E3A8A] mb-4">Thêm địa chỉ mới</h2>
+            <div className="space-y-4">
+              <Select options={provinces} value={selectedProvince} onChange={handleProvinceChange} placeholder="Tỉnh/Thành phố" />
+              <Select options={districts} value={selectedDistrict} onChange={handleDistrictChange} placeholder="Quận/Huyện" />
+              <Select options={wards} value={selectedWard} onChange={handleWardChange} placeholder="Phường/Xã" />
+              <input
+                type="text"
+                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-[#1E3A8A]"
+                placeholder="Số nhà, tên đường..."
+                value={customAddress}
+                onChange={e => setCustomAddress(e.target.value)}
+              />
+              <div className="flex gap-3 pt-4">
+                <button onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 bg-gray-100 rounded-lg font-bold text-gray-600 hover:bg-gray-200">Hủy</button>
+                <button onClick={handleCalculateShippingFee} className="flex-1 py-2.5 bg-[#1E3A8A] text-white rounded-lg font-bold hover:bg-blue-800">Xác nhận</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      {isConfirmModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-[#1E3A8A] text-2xl">
+              <FaMoneyBillWave />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">Xác nhận đơn hàng</h2>
+            <p className="text-gray-500 mb-6">Bạn có chắc chắn muốn đặt đơn hàng này với tổng số tiền là <span className="font-bold text-[#1E3A8A]">{finalTotal.toLocaleString()}₫</span>?</p>
+
+            <div className="flex gap-3">
+              <button onClick={() => setIsConfirmModalOpen(false)} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-gray-600 hover:bg-gray-200">Kiểm tra lại</button>
+              <button onClick={handleConfirmOrder} disabled={isOrdering} className="flex-1 py-3 bg-[#1E3A8A] text-white rounded-xl font-bold hover:bg-blue-800 disabled:opacity-50">
+                {isOrdering ? "Đang xử lý..." : "Đồng ý"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </div >
   );
 }
 

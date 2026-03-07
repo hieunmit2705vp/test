@@ -14,7 +14,7 @@ public class AddressResponse implements Serializable {
     String provinceName;
     Integer districtId;
     String districtName;
-    Integer wardId;
+    String wardId;
     String wardName;
     String addressDetail;
 }

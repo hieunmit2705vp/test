@@ -36,9 +36,9 @@ public class Product {
     @JoinColumn(name = "material_id", nullable = false)
     private Material material;
 
-    @Size(max = 10)
+    @Size(max = 30)
     @NotNull
-    @Column(name = "product_code", nullable = false, length = 10)
+    @Column(name = "product_code", nullable = false, length = 30)
     private String productCode;
 
     @Size(max = 255)

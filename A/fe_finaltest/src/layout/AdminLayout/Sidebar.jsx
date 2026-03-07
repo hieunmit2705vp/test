@@ -18,7 +18,8 @@ import {
   FaChevronRight,
   FaChartBar,
   FaCashRegister,
-  FaRegPlusSquare
+  FaRegPlusSquare,
+  FaHistory
 } from "react-icons/fa";
 
 function Sidebar() {
@@ -223,6 +224,7 @@ function Sidebar() {
 
         <MenuItem to="/admin/voucher" icon={<FaMoneyBillWave />} label="Quản lý Voucher" />
         <MenuItem to="/admin/statistics" icon={<FaChartBar />} label="Báo Cáo Thống Kê" />
+        <MenuItem to="/admin/audit-logs" icon={<FaHistory />} label="Lịch sử hệ thống" />
 
       </ul>
 

@@ -32,6 +32,9 @@ public class CartService {
     @Autowired
     private ProductDetailRepository productDetailRepository;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     @Transactional
     public List<CartItemResponse> getAllCartItems() {
         Customer customer = getCurrentCustomer();
@@ -71,20 +74,32 @@ public class CartService {
         }
 
         cartRepository.save(cart);
-        return CartMapper.toCartItemResponse(cart);
+
+        CartItemResponse response = CartMapper.toCartItemResponse(cart);
+        auditLogService.log("Cart", cart.getId(), "ADD_TO_CART", customer.getUsername(),
+                null, response, " Thêm sản phẩm vào giỏ hàng: " + productDetail.getProduct().getProductName());
+
+        return response;
     }
-
-
 
     @Transactional
     public void removeProductFromCart(Integer cartItemId) {
-        cartRepository.deleteById(cartItemId);
+        Cart cart = cartRepository.findById(cartItemId).orElse(null);
+        if (cart != null) {
+            CartItemResponse oldState = CartMapper.toCartItemResponse(cart);
+            cartRepository.delete(cart);
+            auditLogService.log("Cart", cartItemId, "REMOVE_FROM_CART", cart.getCustomer().getUsername(),
+                    oldState, null,
+                    "Xóa sản phẩm khỏi giỏ hàng: " + cart.getProductDetail().getProduct().getProductName());
+        }
     }
 
     @Transactional
     public void clearCart() {
         Customer customer = getCurrentCustomer();
         cartRepository.deleteByCustomer(customer);
+        auditLogService.log("Cart", null, "CLEAR_CART", customer.getUsername(),
+                "Cart Items", null, "Xóa toàn bộ giỏ hàng của khách hàng: " + customer.getUsername());
     }
 
     @Transactional
@@ -103,15 +118,22 @@ public class CartService {
             throw new BadRequestException("Số lượng sản phẩm trong kho không đủ!");
         }
 
+        // Capture old quantity
+        int oldQuantity = cart.getQuantity();
         cart.setQuantity(quantity);
         cartRepository.save(cart);
 
-        return CartMapper.toCartItemResponse(cart);
+        CartItemResponse response = CartMapper.toCartItemResponse(cart);
+        auditLogService.log("Cart", cart.getId(), "UPDATE_QUANTITY", cart.getCustomer().getUsername(),
+                oldQuantity, quantity,
+                "Cập nhật số lượng sản phẩm trong giỏ hàng: " + cart.getProductDetail().getProduct().getProductName());
+
+        return response;
     }
 
-
     private Customer getCurrentCustomer() {
-        CustomUserDetails userDetails = (CustomUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        CustomUserDetails userDetails = (CustomUserDetails) SecurityContextHolder.getContext().getAuthentication()
+                .getPrincipal();
         Customer customer = customerRepository.findByUsername(userDetails.getUsername());
         if (customer == null) {
             throw new EntityNotFoundException("Không tìm thấy khách hàng");

@@ -3,17 +3,13 @@ package backend.datn.services;
 import backend.datn.dto.request.CustomerCreateRequest;
 import backend.datn.dto.request.CustomerPasswordUpdateRequest;
 import backend.datn.dto.request.CustomerUpdateRequest;
-import backend.datn.dto.request.EmployeePasswordUpdateRequest;
 import backend.datn.dto.response.CustomerResponse;
-import backend.datn.dto.response.EmployeeResponse;
 import backend.datn.entities.Customer;
-import backend.datn.entities.Employee;
 import backend.datn.exceptions.EntityAlreadyExistsException;
 import backend.datn.exceptions.EntityNotFoundException;
 import backend.datn.helpers.CodeGeneratorHelper;
 import backend.datn.helpers.RandomHelper;
 import backend.datn.mapper.CustomerMapper;
-import backend.datn.mapper.EmployeeMapper;
 import backend.datn.repositories.CustomerRepository;
 import backend.datn.repositories.EmployeeRepository;
 import jakarta.validation.constraints.NotNull;
@@ -26,6 +22,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -45,6 +42,9 @@ public class CustomerService {
 
     @Autowired
     private MailService mailService;
+
+    @Autowired
+    private AuditLogService auditLogService;
 
     public Page<CustomerResponse> getAllCustomers(String search, int page, int size, String sortBy, String sortDir) {
         if (sortBy == null || sortBy.trim().isEmpty()) {
@@ -68,6 +68,7 @@ public class CustomerService {
         return CustomerMapper.toCustomerResponse(customer);
     }
 
+    @Transactional
     public CustomerResponse createCustomer(CustomerCreateRequest request) {
         if (employeeRepository.existsByEmail(request.getEmail())) {
             throw new EntityAlreadyExistsException("Email đã tồn tại.");
@@ -75,19 +76,19 @@ public class CustomerService {
         if (employeeRepository.existsByPhone(request.getPhone())) {
             throw new EntityAlreadyExistsException("Số điện thoại đã tồn tại.");
         }
-        if(employeeRepository.existsByUsername(request.getUsername())){
+        if (employeeRepository.existsByUsername(request.getUsername())) {
             throw new EntityAlreadyExistsException("Tên đăng nhập đã tồn tại.");
         }
 
-        if(customerRepository.existsByUsername(request.getUsername())){
+        if (customerRepository.existsByUsername(request.getUsername())) {
             throw new EntityAlreadyExistsException("Tên đăng nhập đã tồn tại.");
         }
 
-        if(employeeRepository.existsByEmail(request.getEmail())){
+        if (employeeRepository.existsByEmail(request.getEmail())) {
             throw new EntityAlreadyExistsException("Email đã tồn tại.");
         }
 
-        if(employeeRepository.existsByPhone(request.getPhone())){
+        if (employeeRepository.existsByPhone(request.getPhone())) {
             throw new EntityAlreadyExistsException("Số điện thoại đã tồn tại.");
         }
 
@@ -96,7 +97,8 @@ public class CustomerService {
         customer.setFullname(request.getFullname());
 
         // Sử dụng CodeGeneratorHelper để tạo username duy nhất, giới hạn 8 ký tự
-        String username = (request.getUsername() != null) ? request.getUsername() : CodeGeneratorHelper.generateCode("cus").substring(0, 10);
+        String username = (request.getUsername() != null) ? request.getUsername()
+                : CodeGeneratorHelper.generateCode("cus").substring(0, 10);
         while (customerRepository.existsByUsername(username)) {
             username = CodeGeneratorHelper.generateCode("cus").substring(0, 10);
         }
@@ -121,6 +123,9 @@ public class CustomerService {
         logger.info("Khách hàng đã lưu thành công với ID: {}", customer.getId());
 
         CustomerResponse response = CustomerMapper.toCustomerResponse(customer);
+        auditLogService.log("Customer", customer.getId(), "CREATE", null,
+                null, response, "Đăng ký khách hàng mới: " + customer.getUsername());
+
         logger.info("Response gửi về FE: {}", response); // 🔍 Kiểm tra lỗi trước khi gửi về FE
 
         mailService.sendNewPasswordMail(customer.getUsername(), customer.getEmail(), rawPassword);
@@ -128,9 +133,13 @@ public class CustomerService {
         return response;
     }
 
+    @Transactional
     public CustomerResponse updateCustomer(int id, CustomerUpdateRequest request) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khách hàng với ID: " + id));
+
+        // Capture state
+        CustomerResponse oldState = CustomerMapper.toCustomerResponse(customer);
 
         if (customerRepository.existsByEmailAndNotId(request.getEmail(), id)) {
             throw new EntityAlreadyExistsException("Email đã tồn tại.");
@@ -153,20 +162,30 @@ public class CustomerService {
 
         customer = customerRepository.save(customer);
 
-        return CustomerMapper.toCustomerResponse(customer);
+        CustomerResponse newState = CustomerMapper.toCustomerResponse(customer);
+        auditLogService.log("Customer", customer.getId(), "UPDATE", null,
+                oldState, newState, "Cập nhật thông tin khách hàng: " + customer.getUsername());
+
+        return newState;
     }
 
+    @Transactional
     public CustomerResponse toggleStatusCustomer(int id) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khách hàng với ID: " + id));
 
-        customer.setStatus(!customer.getStatus());
+        boolean oldStatus = customer.getStatus();
+        customer.setStatus(!oldStatus);
         customer = customerRepository.save(customer);
-        return CustomerMapper.toCustomerResponse(customer);
+
+        CustomerResponse response = CustomerMapper.toCustomerResponse(customer);
+        auditLogService.log("Customer", customer.getId(), "TOGGLE_STATUS", null,
+                oldStatus, !oldStatus, "Đổi trạng thái khách hàng: " + customer.getUsername());
+
+        return response;
     }
 
-
-
+    @Transactional
     public CustomerResponse updatePassword(int id, CustomerPasswordUpdateRequest request) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khách hàngvới id: " + id));
@@ -185,17 +204,15 @@ public class CustomerService {
         // Lưu vào DB
         customer = customerRepository.save(customer);
 
+        auditLogService.log("Customer", customer.getId(), "UPDATE_PASSWORD", null,
+                "********", "********", "Đổi mật khẩu cho khách hàng: " + customer.getUsername());
+
         return CustomerMapper.toCustomerResponse(customer);
     }
-
-
 
     public Optional<Customer> findById(@NotNull Integer customerId) {
         return customerRepository.findById(customerId);
     }
-
-
-
 
     // thêm khach hàng vãng lai
     public Customer getWalkInCustomer() {

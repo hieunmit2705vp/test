@@ -270,6 +270,14 @@ export default function OrderPOS() {
                     </th>
                     <th
                       scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>ID</span>
+                      </div>
+                    </th>
+                    <th
+                      scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                       onClick={() => handleSort("orderCode")}
                     >
@@ -341,6 +349,9 @@ export default function OrderPOS() {
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {getSTT(index)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-bold">
+                        #{item.id}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">

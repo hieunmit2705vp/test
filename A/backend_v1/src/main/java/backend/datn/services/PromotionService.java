@@ -1,6 +1,5 @@
 package backend.datn.services;
 
-
 import backend.datn.dto.request.PromotionCreateRequest;
 import backend.datn.dto.request.PromotionUpdateRequest;
 import backend.datn.dto.response.PromotionResponse;
@@ -25,6 +24,9 @@ public class PromotionService {
     @Autowired
     private PromotionRepository promotionRepository;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     public Page<PromotionResponse> getAllPromotion(
             String search,
             LocalDateTime startDate,
@@ -35,8 +37,7 @@ public class PromotionService {
             int page,
             int size,
             String sortBy,
-            String sortDir
-    ) {
+            String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
@@ -73,12 +74,20 @@ public class PromotionService {
 
         promotion = promotionRepository.save(promotion);
 
+        // Ghi log
+        auditLogService.log("Promotion", promotion.getId(), "CREATE", null,
+                null, PromotionMapper.toPromotionResponse(promotion),
+                "Tạo mới đợt Khuyến mãi: " + promotion.getPromotionName());
+
         return PromotionMapper.toPromotionResponse(promotion);
     }
 
     public PromotionResponse updatePromotion(PromotionUpdateRequest updateRequest, Integer id) {
         Promotion promotion = promotionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Promotion không tồn tại với ID: " + id));
+
+        // Capture old state BEFORE modification
+        PromotionResponse oldState = PromotionMapper.toPromotionResponse(promotion);
 
         if (updateRequest.getStartDate().isAfter(updateRequest.getEndDate())) {
             throw new IllegalArgumentException("Ngày bắt đầu không được lớn hơn ngày kết thúc!");
@@ -97,22 +106,42 @@ public class PromotionService {
 
         promotion = promotionRepository.save(promotion);
 
+        // Ghi log
+        auditLogService.log("Promotion", promotion.getId(), "UPDATE", null,
+                oldState,
+                PromotionMapper.toPromotionResponse(promotion),
+                "Cập nhật đợt Khuyến mãi: " + promotion.getPromotionName());
+
         return PromotionMapper.toPromotionResponse(promotion);
     }
 
     @Transactional
     public void deletePromotion(Integer id) {
-        Promotion promotion = promotionRepository.findById(id).orElseThrow(()
-                -> new RuntimeException("Promotion không tồn tại với ID: " + id));
+        Promotion promotion = promotionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promotion không tồn tại với ID: " + id));
+        PromotionResponse oldResponse = PromotionMapper.toPromotionResponse(promotion);
         promotionRepository.delete(promotion);
+
+        // Ghi log
+        auditLogService.log("Promotion", id, "DELETE", null,
+                oldResponse, null,
+                "Xóa đợt Khuyến mãi: " + oldResponse.getPromotionName());
     }
 
     @Transactional
     public PromotionResponse toggleStatusPromotionResponse(Integer id) {
         Promotion promotion = promotionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Promotion khong co id: " + id));
+        boolean oldStatus = promotion.getStatus();
         promotion.setStatus(!promotion.getStatus());
         Promotion newPromotion = promotionRepository.save(promotion);
+
+        // Ghi log
+        auditLogService.log("Promotion", newPromotion.getId(), "TOGGLE_STATUS", null,
+                oldStatus ? "Đang hoạt động" : "Ngừng hoạt động",
+                newPromotion.getStatus() ? "Đang hoạt động" : "Ngừng hoạt động",
+                "Thay đổi trạng thái Khuyến mãi: " + newPromotion.getPromotionName());
+
         return PromotionMapper.toPromotionResponse(newPromotion);
     }
 }

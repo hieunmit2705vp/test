@@ -17,17 +17,18 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
 @Service
 public class CategoryService {
 
     @Autowired
     CategoryRepository categoryRepository;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     public Page<CategoryResponse> getAllCategories(String search, int page, int size, String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
-                Sort.by(sortBy).ascending() :
-                Sort.by(sortBy).descending();
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -50,7 +51,12 @@ public class CategoryService {
         Category category = new Category();
         category.setCategoryName(categoryCreateRequest.getName());
         category = categoryRepository.save(category);
-        return CategoryMapper.toCategoryResponse(category);
+
+        CategoryResponse response = CategoryMapper.toCategoryResponse(category);
+        auditLogService.log("Category", category.getId(), "CREATE", null,
+                null, response, "Tạo mới thể loại: " + category.getCategoryName());
+
+        return response;
     }
 
     @Transactional
@@ -58,27 +64,49 @@ public class CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thể loại có id: " + id));
 
-        if(category.getCategoryName().equalsIgnoreCase(categoryUpdateRequest.getName()) && categoryRepository.existsByCategoryName(categoryUpdateRequest.getName())) {
-            throw new EntityAlreadyExistsException("Thể loại có tên: " + categoryUpdateRequest.getName() + " đã tồn tại");
+        // Capture state
+        CategoryResponse oldState = CategoryMapper.toCategoryResponse(category);
+
+        if (category.getCategoryName().equalsIgnoreCase(categoryUpdateRequest.getName())
+                && categoryRepository.existsByCategoryName(categoryUpdateRequest.getName())) {
+            throw new EntityAlreadyExistsException(
+                    "Thể loại có tên: " + categoryUpdateRequest.getName() + " đã tồn tại");
         }
         category.setCategoryName(categoryUpdateRequest.getName());
         category = categoryRepository.save(category);
-        return CategoryMapper.toCategoryResponse(category);
+
+        CategoryResponse newState = CategoryMapper.toCategoryResponse(category);
+        auditLogService.log("Category", category.getId(), "UPDATE", null,
+                oldState, newState, "Cập nhật thể loại: " + category.getCategoryName());
+
+        return newState;
     }
 
     @Transactional
     public CategoryResponse toggleCategoryStatus(Integer id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thể loại có id: " + id));
+
+        boolean oldStatus = category.getStatus();
         category.setStatus(!category.getStatus());
         category = categoryRepository.save(category);
-        return CategoryMapper.toCategoryResponse(category);
+
+        CategoryResponse response = CategoryMapper.toCategoryResponse(category);
+        auditLogService.log("Category", category.getId(), "TOGGLE_STATUS", null,
+                oldStatus, !oldStatus, "Đổi trạng thái thể loại: " + category.getCategoryName());
+
+        return response;
     }
 
     @Transactional
     public void deleteCategory(Integer id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thể loại có id: " + id));
+
+        CategoryResponse oldState = CategoryMapper.toCategoryResponse(category);
         categoryRepository.delete(category);
+
+        auditLogService.log("Category", id, "DELETE", null,
+                oldState, null, "Xóa thể loại: " + category.getCategoryName());
     }
 }

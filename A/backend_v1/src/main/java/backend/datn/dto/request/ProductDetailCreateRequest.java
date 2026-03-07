@@ -28,7 +28,6 @@ public class ProductDetailCreateRequest {
 
     private Integer promotionId;
 
-    @Size(max = 250, message = "Ảnh không được vượt quá 250 ký tự")
     @NotNull(message = "Ảnh không được để trống")
     private String photo;
 

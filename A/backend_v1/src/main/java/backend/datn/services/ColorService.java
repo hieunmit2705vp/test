@@ -22,10 +22,12 @@ public class ColorService {
     @Autowired
     ColorRepository colorRepository;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     public Page<ColorResponse> getAllColors(String search, int page, int size, String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
-                Sort.by(sortBy).ascending() :
-                Sort.by(sortBy).descending();
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -48,7 +50,12 @@ public class ColorService {
         Color color = new Color();
         color.setColorName(colorCreateRequest.getName());
         color = colorRepository.save(color);
-        return ColorMapper.toColorResponse(color);
+
+        ColorResponse response = ColorMapper.toColorResponse(color);
+        auditLogService.log("Color", color.getId(), "CREATE", null,
+                null, response, "Tạo mới màu sắc: " + color.getColorName());
+
+        return response;
     }
 
     @Transactional
@@ -56,27 +63,48 @@ public class ColorService {
         Color color = colorRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy màu sắc có id: " + id));
 
-        if(color.getColorName().equalsIgnoreCase(colorUpdateRequest.getName()) && colorRepository.existsByColorName(colorUpdateRequest.getName())) {
+        // Capture state
+        ColorResponse oldState = ColorMapper.toColorResponse(color);
+
+        if (color.getColorName().equalsIgnoreCase(colorUpdateRequest.getName())
+                && colorRepository.existsByColorName(colorUpdateRequest.getName())) {
             throw new EntityAlreadyExistsException("Màu sắc có tên: " + colorUpdateRequest.getName() + " đã tồn tại");
         }
         color.setColorName(colorUpdateRequest.getName());
         color = colorRepository.save(color);
-        return ColorMapper.toColorResponse(color);
+
+        ColorResponse newState = ColorMapper.toColorResponse(color);
+        auditLogService.log("Color", color.getId(), "UPDATE", null,
+                oldState, newState, "Cập nhật màu sắc: " + color.getColorName());
+
+        return newState;
     }
 
     @Transactional
     public ColorResponse toggleColorStatus(Integer id) {
         Color color = colorRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy màu sắc có id: " + id));
-        color.setStatus(!color.getStatus());
+
+        boolean oldStatus = color.getStatus();
+        color.setStatus(!oldStatus);
         color = colorRepository.save(color);
-        return ColorMapper.toColorResponse(color);
+
+        ColorResponse response = ColorMapper.toColorResponse(color);
+        auditLogService.log("Color", color.getId(), "TOGGLE_STATUS", null,
+                oldStatus, !oldStatus, "Đổi trạng thái màu sắc: " + color.getColorName());
+
+        return response;
     }
 
     @Transactional
     public void deleteColor(Integer id) {
         Color color = colorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy màu sắc có id: " + id));
+
+        ColorResponse oldState = ColorMapper.toColorResponse(color);
         colorRepository.delete(color);
+
+        auditLogService.log("Color", id, "DELETE", null,
+                oldState, null, "Xóa màu sắc: " + color.getColorName());
     }
 }

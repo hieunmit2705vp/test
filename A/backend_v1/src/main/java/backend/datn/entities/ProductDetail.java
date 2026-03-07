@@ -46,9 +46,8 @@ public class ProductDetail {
     @JoinColumn(name = "sleeve_id")
     private Sleeve sleeve;
 
-    @Size(max = 250)
     @NotNull
-    @Column(name = "photo", nullable = false, length = 250)
+    @Column(name = "photo", nullable = false)
     private String photo;
 
     @Size(max = 50)

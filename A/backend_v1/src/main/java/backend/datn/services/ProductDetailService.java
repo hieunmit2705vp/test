@@ -48,6 +48,9 @@ public class ProductDetailService {
     @Autowired
     private BrandRepository brandRepository;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     public Page<ProductDetailResponse> getAllProductDetails(
             String search,
             List<Integer> sizeIds, List<Integer> colorIds,
@@ -105,8 +108,14 @@ public class ProductDetailService {
                         for (Integer sleeveId : request.getSleeveId()) {
                             ProductDetail productDetail = new ProductDetail();
                             mapToEntity(request, productDetail, sizeId, colorId, collarId, sleeveId);
-                            productDetailRepository.save(productDetail);
-                            result.add(ProductDetailMapper.toProductDetailResponse(productDetail));
+                            productDetail = productDetailRepository.save(productDetail);
+                            ProductDetailResponse response = ProductDetailMapper.toProductDetailResponse(productDetail);
+                            result.add(response);
+
+                            // Ghi log
+                            auditLogService.log("ProductDetail", productDetail.getId(), "CREATE", null,
+                                    null, response,
+                                    "Tạo mới chi tiết sản phẩm: " + productDetail.getProductDetailCode());
                         }
                     }
                 }
@@ -119,6 +128,9 @@ public class ProductDetailService {
     public ProductDetailResponse updateProductDetail(Integer id, ProductDetailUpdateRequest request) {
         ProductDetail productDetail = productDetailRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy chi tiết sản phẩm"));
+
+        // Capture old state BEFORE modification
+        ProductDetailResponse oldState = ProductDetailMapper.toProductDetailResponse(productDetail);
 
         mapToEntity(request, productDetail);
 
@@ -136,8 +148,15 @@ public class ProductDetailService {
             throw new EntityAlreadyExistsException("Biến thể sản phẩm này đã tồn tại");
         }
 
-        productDetailRepository.save(productDetail);
-        return ProductDetailMapper.toProductDetailResponse(productDetail);
+        ProductDetail saved = productDetailRepository.save(productDetail);
+
+        // Ghi log
+        auditLogService.log("ProductDetail", saved.getId(), "UPDATE", null,
+                oldState,
+                ProductDetailMapper.toProductDetailResponse(saved),
+                "Cập nhật chi tiết sản phẩm: " + saved.getProductDetailCode());
+
+        return ProductDetailMapper.toProductDetailResponse(saved);
     }
 
     // sửa soos lượng sản phẩm
@@ -246,9 +265,17 @@ public class ProductDetailService {
         ProductDetail productDetail = productDetailRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy chi tiết sản phẩm"));
 
+        boolean oldStatus = productDetail.getStatus();
         productDetail.setStatus(!productDetail.getStatus());
-        productDetailRepository.save(productDetail);
-        return ProductDetailMapper.toProductDetailResponse(productDetail);
+        ProductDetail saved = productDetailRepository.save(productDetail);
+
+        // Ghi log
+        auditLogService.log("ProductDetail", saved.getId(), "TOGGLE_STATUS", null,
+                oldStatus ? "Đang hoạt động" : "Ngừng hoạt động",
+                saved.getStatus() ? "Đang hoạt động" : "Ngừng hoạt động",
+                "Thay đổi trạng thái chi tiết sản phẩm: " + saved.getProductDetailCode());
+
+        return ProductDetailMapper.toProductDetailResponse(saved);
     }
 
     public Optional<ProductDetail> findById(@NotNull Integer productDetailId) {

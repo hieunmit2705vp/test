@@ -11,9 +11,6 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -40,8 +37,10 @@ public class ProductController {
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDirection) {
         try {
-            Page<ProductResponse> products = productService.getAllProducts(keyword, status, page, size, sortBy, sortDirection);
-            return new ResponseEntity<>(new ApiResponse("success", "Products retrieved successfully", products), HttpStatus.OK);
+            Page<ProductResponse> products = productService.getAllProducts(keyword, status, page, size, sortBy,
+                    sortDirection);
+            return new ResponseEntity<>(new ApiResponse("success", "Products retrieved successfully", products),
+                    HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(new ApiResponse("error", e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -51,7 +50,8 @@ public class ProductController {
     public ResponseEntity<ApiResponse> getProductById(@PathVariable Integer id) {
         try {
             ProductResponse product = productService.getProductById(id);
-            return new ResponseEntity<>(new ApiResponse("success", "Product retrieved successfully", product), HttpStatus.OK);
+            return new ResponseEntity<>(new ApiResponse("success", "Product retrieved successfully", product),
+                    HttpStatus.OK);
         } catch (EntityNotFoundException e) {
             return new ResponseEntity<>(new ApiResponse("error", e.getMessage()), HttpStatus.NOT_FOUND);
         } catch (Exception e) {
@@ -60,7 +60,8 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse> createProduct(@Valid @RequestBody ProductCreateRequest request, BindingResult bindingResult) {
+    public ResponseEntity<ApiResponse> createProduct(@Valid @RequestBody ProductCreateRequest request,
+            BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             Map<String, String> errors = new HashMap<>();
             bindingResult.getFieldErrors().forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
@@ -68,14 +69,16 @@ public class ProductController {
         }
         try {
             ProductResponse product = productService.createProduct(request);
-            return new ResponseEntity<>(new ApiResponse("success", "Product created successfully", product), HttpStatus.CREATED);
+            return new ResponseEntity<>(new ApiResponse("success", "Product created successfully", product),
+                    HttpStatus.CREATED);
         } catch (Exception e) {
             return new ResponseEntity<>(new ApiResponse("error", e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse> updateProduct(@PathVariable Integer id, @Valid @RequestBody ProductUpdateRequest request, BindingResult bindingResult) {
+    public ResponseEntity<ApiResponse> updateProduct(@PathVariable Integer id,
+            @Valid @RequestBody ProductUpdateRequest request, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             Map<String, String> errors = new HashMap<>();
             bindingResult.getFieldErrors().forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
@@ -83,7 +86,8 @@ public class ProductController {
         }
         try {
             ProductResponse product = productService.updateProduct(id, request);
-            return new ResponseEntity<>(new ApiResponse("success", "Product updated successfully", product), HttpStatus.OK);
+            return new ResponseEntity<>(new ApiResponse("success", "Product updated successfully", product),
+                    HttpStatus.OK);
         } catch (EntityNotFoundException e) {
             return new ResponseEntity<>(new ApiResponse("error", e.getMessage()), HttpStatus.NOT_FOUND);
         } catch (Exception e) {
@@ -91,12 +95,12 @@ public class ProductController {
         }
     }
 
-
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse> deleteProduct(@PathVariable Integer id) {
         try {
             productService.deleteProduct(id);
-            return new ResponseEntity<>(new ApiResponse("success", "Product deleted successfully"), HttpStatus.NO_CONTENT);
+            return new ResponseEntity<>(new ApiResponse("success", "Product deleted successfully"),
+                    HttpStatus.NO_CONTENT);
         } catch (EntityNotFoundException e) {
             return new ResponseEntity<>(new ApiResponse("error", e.getMessage()), HttpStatus.NOT_FOUND);
         } catch (Exception e) {
@@ -108,7 +112,8 @@ public class ProductController {
     public ResponseEntity<ApiResponse> toggleProductStatus(@PathVariable Integer id) {
         try {
             ProductResponse product = productService.toggleProductStatus(id);
-            return new ResponseEntity<>(new ApiResponse("success", "Product status toggled successfully", product), HttpStatus.OK);
+            return new ResponseEntity<>(new ApiResponse("success", "Product status toggled successfully", product),
+                    HttpStatus.OK);
         } catch (EntityNotFoundException e) {
             return new ResponseEntity<>(new ApiResponse("error", e.getMessage()), HttpStatus.NOT_FOUND);
         } catch (Exception e) {
@@ -120,13 +125,16 @@ public class ProductController {
     public ResponseEntity<ApiResponse> getProductDetailsByProductCode(@PathVariable String productCode) {
         try {
             List<ProductDetailResponse> productDetails = productService.getProductDetailsByProductCode(productCode);
-            return new ResponseEntity<>(new ApiResponse("success", "Product details retrieved successfully", productDetails), HttpStatus.OK);
+            return new ResponseEntity<>(
+                    new ApiResponse("success", "Product details retrieved successfully", productDetails),
+                    HttpStatus.OK);
         } catch (EntityNotFoundException e) {
             return new ResponseEntity<>(new ApiResponse("error", e.getMessage()), HttpStatus.NOT_FOUND);
         } catch (Exception e) {
             return new ResponseEntity<>(new ApiResponse("error", e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
     @GetMapping("/filter")
     public ResponseEntity<Page<UserProductResponse>> getFilteredProducts(
             @RequestParam(required = false) String search,
@@ -142,14 +150,11 @@ public class ProductController {
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
+            @RequestParam(defaultValue = "10") int size) {
         Page<UserProductResponse> products = productService.getAllProductUser(
                 search, brandIds, categoryIds, materialIds, collarIds, sleeveIds,
-                colorIds, sizeIds, minPrice, maxPrice, sortBy, sortDir, page, size
-        );
+                colorIds, sizeIds, minPrice, maxPrice, sortBy, sortDir, page, size);
         return ResponseEntity.ok(products);
     }
-
 
 }

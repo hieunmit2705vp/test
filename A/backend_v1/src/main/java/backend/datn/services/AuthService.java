@@ -45,8 +45,10 @@ public class AuthService {
     private AddressRepository addressRepository;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private AuditLogService auditLogService;
 
+    @Autowired
+    private JwtUtil jwtUtil;
     @Autowired
     private MailService mailService;
 
@@ -72,8 +74,7 @@ public class AuthService {
             return new LoginResponse(
                     token, customer.getUsername(), "CUSTOMER",
                     customer.getFullname(), customer.getEmail(),
-                    customer.getPhone(), null, null, customer.getStatus()
-            );
+                    customer.getPhone(), null, null, customer.getStatus());
         }
 
         // Tìm kiếm người dùng trong bảng Employee
@@ -95,8 +96,7 @@ public class AuthService {
                     token, employee.getUsername(), employee.getRole().getName(),
                     employee.getFullname(), employee.getEmail(),
                     employee.getPhone(), employee.getAddress(),
-                    employee.getPhoto(), employee.getStatus() == 1
-            );
+                    employee.getPhoto(), employee.getStatus() == 1);
         }
 
         // Nếu không tìm thấy, ném lỗi xác thực
@@ -149,7 +149,7 @@ public class AuthService {
         String token = jwtUtil.generateToken(request.getUsername(), claims);
         String confirmationLink = "http://localhost:8080/auth/confirm?token=" + token;
 
-            mailService.sendVerificationMail(request.getUsername(), request.getEmail(), confirmationLink);
+        mailService.sendVerificationMail(request.getUsername(), request.getEmail(), confirmationLink);
 
         return "Đã gửi email xác nhận đến: " + request.getEmail();
     }
@@ -177,20 +177,22 @@ public class AuthService {
             customer.setStatus(true);
             customer.setForgetPassword(false);
 
-            customerRepository.save(customer);
+            customer = customerRepository.save(customer);
+
+            // Ghi log
+            auditLogService.log("Customer", customer.getId(), "REGISTER", customer.getUsername(),
+                    null, CustomerMapper.toCustomerResponse(customer),
+                    "Người dùng đăng ký tài khoản mới: " + customer.getUsername());
+
             return "Tài khoản đã được kích hoạt thành công!";
         } catch (Exception e) {
             return "Token không hợp lệ hoặc đã hết hạn.";
         }
     }
 
-
-
-
     // Bước 1: Người dùng yêu cầu quên mật khẩu
     public void handleForgotPassword(String usernameOrEmail) {
         String tempPassword = CodeGeneratorHelper.generateCode("TMP").substring(0, 8);
-
 
         // Kiểm tra Customer
         Customer customer = customerRepository.findByUsernameOrEmail(usernameOrEmail);
@@ -230,8 +232,22 @@ public class AuthService {
             String newPassword = claims.get("newPassword", String.class);
 
             // Cập nhật mật khẩu mới cho Customer hoặc Employee
-            if (updateCustomerPassword(username, newPassword)) return;
-            if (updateEmployeePassword(username, newPassword)) return;
+            if (updateCustomerPassword(username, newPassword)) {
+                // Ghi log
+                Customer customer = customerRepository.findByUsername(username);
+                auditLogService.log("Customer", customer.getId(), "FORGOT_PASSWORD_RESET", customer.getUsername(),
+                        "********", "********",
+                        "Khôi phục mật khẩu qua email cho tài khoản: " + username);
+                return;
+            }
+            if (updateEmployeePassword(username, newPassword)) {
+                // Ghi log
+                Employee employee = employeeRepository.findByUsername(username);
+                auditLogService.log("Employee", employee.getId(), "FORGOT_PASSWORD_RESET", employee.getUsername(),
+                        "********", "********",
+                        "Khôi phục mật khẩu qua email cho nhân viên: " + username);
+                return;
+            }
 
             throw new EntityNotFoundException("Không thể xác nhận mật khẩu mới.");
         } catch (Exception e) {
@@ -260,7 +276,6 @@ public class AuthService {
         }
         return false;
     }
-
 
     public boolean resetTempAccounts() {
         String newPassword = passwordEncoder.encode("abc123");
@@ -294,7 +309,6 @@ public class AuthService {
         return updated;
     }
 
-
     public Object getCurrentUserInfo() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
@@ -317,8 +331,6 @@ public class AuthService {
 
         throw new EntityNotFoundException("Không tìm thấy thông tin tài khoản");
     }
-
-
 
     public List<AddressResponse> getCurrentUserAddresses() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -358,6 +370,9 @@ public class AuthService {
             throw new EntityNotFoundException("Không tìm thấy thông tin khách hàng");
         }
 
+        // Capture old state
+        Object oldState = CustomerMapper.toCustomerResponse(customer);
+
         // Kiểm tra email và phone không trùng với người dùng khác
         if (customerRepository.existsByEmailAndNotId(request.getEmail(), customer.getId())) {
             throw new RuntimeException("Email đã tồn tại.");
@@ -375,7 +390,13 @@ public class AuthService {
         }
         customer.setUpdateDate(java.time.Instant.now());
 
-        customerRepository.save(customer);
+        customer = customerRepository.save(customer);
+
+        // Ghi log
+        auditLogService.log("Customer", customer.getId(), "UPDATE_PROFILE", customer.getUsername(),
+                oldState, CustomerMapper.toCustomerResponse(customer),
+                "Người dùng tự cập nhật thông tin cá nhân: " + customer.getUsername());
+
         return CustomerMapper.toCustomerResponse(customer);
     }
 }

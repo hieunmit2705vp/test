@@ -38,6 +38,7 @@ const Voucher = lazy(() => import("../pages/admin/Voucher"));
 // 📌 Quản lý danh mục, thống kê
 const Category = lazy(() => import("../pages/admin/Category"));
 const Statistic = lazy(() => import("../pages/admin/Statistics"));
+const AuditLog = lazy(() => import("../pages/admin/AuditLog"));
 
 const adminRoutes = [
   { path: "dashboard", component: Dashboard, role: ["ADMIN", "STAFF"] },
@@ -81,6 +82,7 @@ const adminRoutes = [
   }, // Chi tiết đơn hàng Online
   { path: "voucher", component: Voucher, role: ["ADMIN", "STAFF"] },
   { path: "statistics", component: Statistic, role: ["ADMIN"] },
+  { path: "audit-logs", component: AuditLog, role: ["ADMIN"] },
 ];
 
 export default adminRoutes;

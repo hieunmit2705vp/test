@@ -204,6 +204,7 @@ export default function Product() {
               <thead className="bg-[#1E3A8A] text-white uppercase text-sm leading-normal">
                 <tr>
                   <th className="py-4 px-6 font-semibold tracking-wider text-center">STT</th>
+                  <th className="py-4 px-6 font-semibold tracking-wider text-center">ID</th>
                   <th className="py-4 px-6 font-semibold tracking-wider cursor-pointer hover:bg-[#163172]" onClick={() => handleSort("productCode")}>
                     Mã
                     {sortBy === "productCode" && (sortDirection === "asc" ? " ▲" : " ▼")}
@@ -223,6 +224,7 @@ export default function Product() {
                 {items.map((item, index) => (
                   <tr key={item.id} className="border-b border-gray-200 hover:bg-indigo-50 transition-colors duration-200">
                     <td className="py-4 px-6 text-center font-medium">{index + 1 + currentPage * pageSize}</td>
+                    <td className="py-4 px-6 text-center font-bold">#{item.id}</td>
                     <td className="py-4 px-6 font-semibold text-gray-800">{item.productCode}</td>
                     <td className="py-4 px-6 font-semibold text-[#1E3A8A]">{item.productName}</td>
                     <td className="py-4 px-6">{item.brand.brandName}</td>
@@ -275,7 +277,7 @@ export default function Product() {
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan="8" className="py-8 text-center text-gray-500 italic">
+                    <td colSpan="9" className="py-8 text-center text-gray-500 italic">
                       Không tìm thấy dữ liệu
                     </td>
                   </tr>

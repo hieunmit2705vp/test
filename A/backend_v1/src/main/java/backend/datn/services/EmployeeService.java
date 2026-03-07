@@ -16,13 +16,13 @@ import backend.datn.repositories.EmployeeRepository;
 import backend.datn.repositories.RoleRepository;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -40,6 +40,9 @@ public class EmployeeService {
 
     @Autowired
     private RoleRepository roleRepository;
+
+    @Autowired
+    private AuditLogService auditLogService;
 
     public Page<EmployeeResponse> getAllEmployees(String search, int page, int size, String sortBy, String sortDir) {
         if (sortBy == null || sortBy.trim().isEmpty()) {
@@ -62,6 +65,7 @@ public class EmployeeService {
         return EmployeeMapper.toEmployeeResponse(employee);
     }
 
+    @Transactional
     public EmployeeResponse createEmployee(EmployeeCreateRequest request) {
         if (employeeRepository.existsByEmail(request.getEmail())) {
             throw new EntityAlreadyExistsException("Email đã tồn tại.");
@@ -69,19 +73,19 @@ public class EmployeeService {
         if (employeeRepository.existsByPhone(request.getPhone())) {
             throw new EntityAlreadyExistsException("Số điện thoại đã tồn tại.");
         }
-        if(employeeRepository.existsByUsername(request.getUsername())){
+        if (employeeRepository.existsByUsername(request.getUsername())) {
             throw new EntityAlreadyExistsException("Tên đăng nhập đã tồn tại.");
         }
 
-        if(customerRepository.existsByUsername(request.getUsername())){
+        if (customerRepository.existsByUsername(request.getUsername())) {
             throw new EntityAlreadyExistsException("Tên đăng nhập đã tồn tại.");
         }
 
-        if(employeeRepository.existsByEmail(request.getEmail())){
+        if (employeeRepository.existsByEmail(request.getEmail())) {
             throw new EntityAlreadyExistsException("Email đã tồn tại.");
         }
 
-        if(employeeRepository.existsByPhone(request.getPhone())){
+        if (employeeRepository.existsByPhone(request.getPhone())) {
             throw new EntityAlreadyExistsException("Số điện thoại đã tồn tại.");
         }
 
@@ -105,19 +109,26 @@ public class EmployeeService {
         employee.setCreateDate(now);
         employee.setUpdateDate(now);
 
-
         String rawPassword = RandomHelper.generateRandomString(8);
         String hashedPassword = passwordEncoder.encode(rawPassword);
         employee.setPassword(hashedPassword);
 
         employee = employeeRepository.save(employee);
 
-        return EmployeeMapper.toEmployeeResponse(employee);
+        EmployeeResponse response = EmployeeMapper.toEmployeeResponse(employee);
+        auditLogService.log("Employee", employee.getId(), "CREATE", null,
+                null, response, "Tạo mới nhân viên: " + employee.getUsername());
+
+        return response;
     }
 
+    @Transactional
     public EmployeeResponse updateEmployee(int id, EmployeeUpdateRequest request) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhân viên với id: " + id));
+
+        // Capture state
+        EmployeeResponse oldState = EmployeeMapper.toEmployeeResponse(employee);
 
         if (employeeRepository.existsByEmailAndNotId(request.getEmail(), id)) {
             throw new EntityAlreadyExistsException("Email đã tồn tại.");
@@ -126,11 +137,11 @@ public class EmployeeService {
             throw new EntityAlreadyExistsException("Số điện thoại đã tồn tại.");
         }
 
-        if(customerRepository.existsByEmailAndNotId(request.getEmail(), id)){
+        if (customerRepository.existsByEmailAndNotId(request.getEmail(), id)) {
             throw new EntityAlreadyExistsException("Email đã tồn tại.");
         }
 
-        if(customerRepository.existsByPhoneAndNotId(request.getPhone(), id)){
+        if (customerRepository.existsByPhoneAndNotId(request.getPhone(), id)) {
             throw new EntityAlreadyExistsException("Số điện thoại đã tồn tại.");
         }
 
@@ -149,18 +160,23 @@ public class EmployeeService {
         employee.setPhoto(request.getPhoto());
         employee.setGender(request.getGender());
 
-
         if (!employee.getUsername().equalsIgnoreCase("admin")) {
             employee.setRole(roleRepository.findById(Integer.valueOf(request.getRoleId()))
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vai trò với id: " + request.getRoleId())));
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Không tìm thấy vai trò với id: " + request.getRoleId())));
         }
 
         employee.setUpdateDate(Instant.now());
         employee = employeeRepository.save(employee);
 
-        return EmployeeMapper.toEmployeeResponse(employee);
+        EmployeeResponse newState = EmployeeMapper.toEmployeeResponse(employee);
+        auditLogService.log("Employee", employee.getId(), "UPDATE", null,
+                oldState, newState, "Cập nhật nhân viên: " + employee.getUsername());
+
+        return newState;
     }
 
+    @Transactional
     public EmployeeResponse updatePassword(int id, EmployeePasswordUpdateRequest request) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhân viên với id: " + id));
@@ -179,21 +195,30 @@ public class EmployeeService {
         // Lưu vào DB
         employee = employeeRepository.save(employee);
 
+        auditLogService.log("Employee", employee.getId(), "UPDATE_PASSWORD", null,
+                "********", "********", "Đổi mật khẩu cho nhân viên: " + employee.getUsername());
+
         return EmployeeMapper.toEmployeeResponse(employee);
     }
 
-
+    @Transactional
     public EmployeeResponse toggleStatusEmployee(int id) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhân viên với id: " + id));
 
-        employee.setStatus(employee.getStatus() == 1 ? 0 : 1);
+        int oldStatus = employee.getStatus();
+        int newStatus = (oldStatus == 1 ? 0 : 1);
+        employee.setStatus(newStatus);
         employee = employeeRepository.save(employee);
-        return EmployeeMapper.toEmployeeResponse(employee);
+
+        EmployeeResponse response = EmployeeMapper.toEmployeeResponse(employee);
+        auditLogService.log("Employee", employee.getId(), "TOGGLE_STATUS", null,
+                oldStatus, newStatus, "Đổi trạng thái nhân viên: " + employee.getUsername());
+
+        return response;
     }
 
     public Optional<Employee> findById(@NotNull Integer employeeId) {
         return employeeRepository.findById(employeeId);
     }
 }
-

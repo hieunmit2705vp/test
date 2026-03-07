@@ -130,6 +130,7 @@ export default function Employee() {
         className="hover:bg-indigo-50 transition-colors duration-200"
       >
         <td className="px-3 py-2 text-center font-medium text-gray-700">{index + 1}</td>
+        <td className="px-3 py-2 text-center font-bold text-gray-700">#{item.id}</td>
         <td className="px-3 py-2 font-mono text-xs text-gray-600">{item.employeeCode}</td>
         <td className="px-3 py-2">
           <div className="flex items-center space-x-2">
@@ -259,6 +260,7 @@ export default function Employee() {
             <thead>
               <tr className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] text-white">
                 <th className="px-3 py-2 text-center font-semibold text-sm">STT</th>
+                <th className="px-3 py-2 text-center font-semibold text-sm">ID</th>
                 {renderSortableHeader("Mã", "employeeCode")}
                 {renderSortableHeader("Tên đăng nhập", "username")}
                 {renderSortableHeader("Tên", "tenNhanVien")}

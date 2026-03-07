@@ -22,10 +22,12 @@ public class CollarService {
     @Autowired
     CollarRepository collarRepository;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
     public Page<CollarResponse> getAllCollars(String search, int page, int size, String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
-                Sort.by(sortBy).ascending() :
-                Sort.by(sortBy).descending();
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -48,7 +50,12 @@ public class CollarService {
         Collar collar = new Collar();
         collar.setCollarName(collarCreateRequest.getName());
         collar = collarRepository.save(collar);
-        return CollarMapper.toCollarResponse(collar);
+
+        CollarResponse response = CollarMapper.toCollarResponse(collar);
+        auditLogService.log("Collar", collar.getId(), "CREATE", null,
+                null, response, "Tạo mới tay áo: " + collar.getCollarName());
+
+        return response;
     }
 
     @Transactional
@@ -56,27 +63,48 @@ public class CollarService {
         Collar collar = collarRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tay áo có id: " + id));
 
-        if(collar.getCollarName().equalsIgnoreCase(collarUpdateRequest.getName()) && collarRepository.existsByCollarName(collarUpdateRequest.getName())) {
+        // Capture state
+        CollarResponse oldState = CollarMapper.toCollarResponse(collar);
+
+        if (collar.getCollarName().equalsIgnoreCase(collarUpdateRequest.getName())
+                && collarRepository.existsByCollarName(collarUpdateRequest.getName())) {
             throw new EntityAlreadyExistsException("Tay áo có tên: " + collarUpdateRequest.getName() + " đã tồn tạia");
         }
         collar.setCollarName(collarUpdateRequest.getName());
         collar = collarRepository.save(collar);
-        return CollarMapper.toCollarResponse(collar);
+
+        CollarResponse newState = CollarMapper.toCollarResponse(collar);
+        auditLogService.log("Collar", collar.getId(), "UPDATE", null,
+                oldState, newState, "Cập nhật tay áo: " + collar.getCollarName());
+
+        return newState;
     }
 
     @Transactional
     public CollarResponse toggleCollarStatus(Integer id) {
         Collar collar = collarRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tay áo có id: " + id));
-        collar.setStatus(!collar.getStatus());
+
+        boolean oldStatus = collar.getStatus();
+        collar.setStatus(!oldStatus);
         collar = collarRepository.save(collar);
-        return CollarMapper.toCollarResponse(collar);
+
+        CollarResponse response = CollarMapper.toCollarResponse(collar);
+        auditLogService.log("Collar", collar.getId(), "TOGGLE_STATUS", null,
+                oldStatus, !oldStatus, "Đổi trạng thái tay áo: " + collar.getCollarName());
+
+        return response;
     }
 
     @Transactional
     public void deleteCollar(Integer id) {
         Collar collar = collarRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tay áo có id: " + id));
+
+        CollarResponse oldState = CollarMapper.toCollarResponse(collar);
         collarRepository.delete(collar);
+
+        auditLogService.log("Collar", id, "DELETE", null,
+                oldState, null, "Xóa tay áo: " + collar.getCollarName());
     }
 }

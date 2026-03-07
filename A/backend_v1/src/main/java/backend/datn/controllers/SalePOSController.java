@@ -9,11 +9,9 @@ import backend.datn.entities.*;
 import backend.datn.mapper.OrderMapper;
 import backend.datn.services.*;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -52,9 +50,8 @@ public class SalePOSController {
             Customer customer = (request.getCustomerId() == null ||
                     request.getCustomerId().toString().trim().isEmpty() ||
                     request.getCustomerId() == -1)
-                    ? customerService.findById(-1).orElse(null)
-                    : resolveCustomer(request.getCustomerId());
-
+                            ? customerService.findById(-1).orElse(null)
+                            : resolveCustomer(request.getCustomerId());
 
             Employee employee = resolveEmployee(request.getEmployeeId());
             Voucher voucher = (request.getVoucherId() != null)
@@ -67,7 +64,8 @@ public class SalePOSController {
             // 🔍 Kiểm tra order sau khi tạo
             System.out.println("✅ [CREATE ORDER] Đơn hàng được tạo thành công: " + order.getId());
 
-            return ResponseEntity.ok(new ApiResponse("success", "Tạo hóa đơn mới thành công", OrderMapper.toOrderResponse(order)));
+            return ResponseEntity
+                    .ok(new ApiResponse("success", "Tạo hóa đơn mới thành công", OrderMapper.toOrderResponse(order)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse("error", e.getMessage(), null));
@@ -77,18 +75,6 @@ public class SalePOSController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse("error", "Lỗi khi tạo hóa đơn: " + e.getMessage(), null));
-        }
-    }
-
-// QR Thanh toán
-    @PostMapping("/payment/create-vietqr-url/{orderId}")
-    public ResponseEntity<String> createVietQRPaymentUrl(@PathVariable Integer orderId) {
-        try {
-            String vietQrUrl = salePOSService.createVietQRPaymentUrl(orderId);
-            return ResponseEntity.ok(vietQrUrl);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Lỗi khi tạo URL VietQR: " + e.getMessage());
         }
     }
 
@@ -136,7 +122,6 @@ public class SalePOSController {
         }
     }
 
-
     /**
      * Cập nhật trạng thái đơn hàng sau khi thanh toán
      */
@@ -153,7 +138,8 @@ public class SalePOSController {
             System.out.println("📌 Xác nhận thanh toán cho đơn hàng #" + orderId);
 
             // 🔍 Log totalBill sau khi cập nhật
-            System.out.println("✅ [PAYMENT] Đơn hàng #" + orderId + " đã được thanh toán. Tổng tiền: " + response.getTotalBill());
+            System.out.println(
+                    "✅ [PAYMENT] Đơn hàng #" + orderId + " đã được thanh toán. Tổng tiền: " + response.getTotalBill());
 
             return ResponseEntity.ok(new ApiResponse("success", "Thanh toán thành công", response));
         } catch (EntityNotFoundException e) {
@@ -171,7 +157,6 @@ public class SalePOSController {
         }
     }
 
-
     // Hỗ trợ lấy thông tin khách hàng
     private Customer resolveCustomer(Integer customerId) {
         if (customerId != null && customerId > 0) {
@@ -181,26 +166,25 @@ public class SalePOSController {
         return customerService.getWalkInCustomer();
     }
 
-
     // Hỗ trợ lấy thông tin nhân viên
     private Employee resolveEmployee(Integer employeeId) {
         return employeeService.findById(employeeId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhân viên với ID: " + employeeId));
     }
 
-
-//    @PostMapping("/checkout")
-//    public ResponseEntity<?> checkout(@Valid @RequestBody OrderPOSCreateRequest request, BindingResult result) {
-//        if (result.hasErrors()) {
-//            return ResponseEntity.badRequest().body(result.getAllErrors());
-//        }
-//        try {
-//            Order order = salePOSService.thanhToan(request);
-//            return ResponseEntity.ok(order);
-//        } catch (RuntimeException e) {
-//            return ResponseEntity.badRequest().body(e.getMessage());
-//        }
-//    }
+    // @PostMapping("/checkout")
+    // public ResponseEntity<?> checkout(@Valid @RequestBody OrderPOSCreateRequest
+    // request, BindingResult result) {
+    // if (result.hasErrors()) {
+    // return ResponseEntity.badRequest().body(result.getAllErrors());
+    // }
+    // try {
+    // Order order = salePOSService.thanhToan(request);
+    // return ResponseEntity.ok(order);
+    // } catch (RuntimeException e) {
+    // return ResponseEntity.badRequest().body(e.getMessage());
+    // }
+    // }
 
     @PostMapping("/checkout")
     public ResponseEntity<?> checkout(@RequestBody OrderPOSCreateRequest request) {
@@ -243,7 +227,8 @@ public class SalePOSController {
 
     /**
      * Cập nhật phương thức thanh toán của đơn hàng
-     * @param orderId ID của đơn hàng
+     * 
+     * @param orderId     ID của đơn hàng
      * @param requestBody Map chứa paymentMethod
      * @return ResponseEntity chứa thông tin đơn hàng đã cập nhật
      */
@@ -259,7 +244,8 @@ public class SalePOSController {
             OrderResponse response = salePOSService.updatePaymentMethod(orderId, paymentMethod);
             System.out.println("✅ [UPDATE PAYMENT METHOD] Cập nhật thành công đơn hàng #" + orderId);
 
-            return ResponseEntity.ok(new ApiResponse("success", "Cập nhật phương thức thanh toán thành công", response));
+            return ResponseEntity
+                    .ok(new ApiResponse("success", "Cập nhật phương thức thanh toán thành công", response));
         } catch (EntityNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse("error", e.getMessage(), null));
@@ -277,6 +263,7 @@ public class SalePOSController {
 
     /**
      * Hủy đơn hàng POS
+     * 
      * @param orderId ID của đơn hàng cần hủy
      * @return ResponseEntity chứa thông tin đơn hàng đã hủy
      */
@@ -301,6 +288,4 @@ public class SalePOSController {
         }
     }
 
-
 }
-

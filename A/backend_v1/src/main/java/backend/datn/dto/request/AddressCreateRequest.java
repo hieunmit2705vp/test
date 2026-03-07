@@ -22,7 +22,7 @@ public class AddressCreateRequest {
     String districtName;
 
     @NotNull(message = "ID xã không được để trống")
-    Integer wardId;
+    String wardId;
 
     @NotBlank(message = "Tên xã không được để trống")
     String wardName;
