@@ -1,0 +1,16 @@
+# Không copy các file .env vào Docker build context
+# Build-arg VITE_API_BASE_URL sẽ là nguồn duy nhất
+.env
+.env.local
+.env.production
+.env.production.local
+
+# Không cần copy node_modules (sẽ cài lại trong container)
+node_modules/
+
+# Không cần git files
+.git
+.gitignore
+
+# Build output
+dist/

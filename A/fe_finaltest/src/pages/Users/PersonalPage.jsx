@@ -26,7 +26,6 @@ const PersonalPage = () => {
     confirmNewPassword: "",
     customAddress: "",
   });
-  const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [provinces, setProvinces] = useState([]);
@@ -136,9 +135,7 @@ const PersonalPage = () => {
           confirmNewPassword: "",
           customAddress: "",
         });
-        setAvatarPreview(
-          customerData.avatar || "https://via.placeholder.com/150"
-        );
+        setAvatarPreview(null);
 
         try {
           const addresses = await AccountService.getCustomerAddresses();
@@ -169,7 +166,7 @@ const PersonalPage = () => {
           console.error("Lỗi khi lấy danh sách địa chỉ:", addressError);
           toast.error(
             addressError.response?.data?.message ||
-              "Không thể tải danh sách địa chỉ!"
+            "Không thể tải danh sách địa chỉ!"
           );
           setUserAddresses([]);
           setSelectedAddress(null);
@@ -258,21 +255,6 @@ const PersonalPage = () => {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        toast.error("Vui lòng chọn file ảnh (jpg, png, ...)");
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Ảnh không được lớn hơn 5MB!");
-        return;
-      }
-      setAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file));
-    }
-  };
 
   const handleDeleteAddress = async (addressId) => {
     if (!isLoggedIn) {
@@ -325,8 +307,7 @@ const PersonalPage = () => {
     const hasProfileChanges =
       formData.fullname !== (customer.fullname || "") ||
       formData.email !== (customer.email || "") ||
-      formData.phone !== (customer.phone || "") ||
-      avatarFile;
+      formData.phone !== (customer.phone || "");
 
     const hasPasswordChanges =
       formData.oldPassword &&
@@ -363,25 +344,6 @@ const PersonalPage = () => {
           toast.success(response.message || "Cập nhật thông tin thành công!");
         }
 
-        if (avatarFile) {
-          const avatarFormData = new FormData();
-          avatarFormData.append("avatar", avatarFile);
-          const avatarResponse =
-            await LoginInfoService.updateAvatar(avatarFormData);
-          if (
-            avatarResponse.status === "success" &&
-            avatarResponse.data.avatarUrl
-          ) {
-            setCustomer((prev) => ({
-              ...prev,
-              avatar: avatarResponse.data.avatarUrl,
-            }));
-            setAvatarFile(null);
-            toast.success("Cập nhật ảnh đại diện thành công!");
-          } else {
-            toast.warn("Cập nhật ảnh đại diện thất bại!");
-          }
-        }
       }
 
       if (hasPasswordChanges) {
@@ -527,12 +489,12 @@ const PersonalPage = () => {
       } else if (error.response?.status === 400) {
         toast.error(
           error.response?.data?.message ||
-            "Thông tin địa chỉ không hợp lệ! Vui lòng kiểm tra lại."
+          "Thông tin địa chỉ không hợp lệ! Vui lòng kiểm tra lại."
         );
       } else {
         toast.error(
           error.response?.data?.message ||
-            "Thêm địa chỉ thất bại! Vui lòng thử lại."
+          "Thêm địa chỉ thất bại! Vui lòng thử lại."
         );
       }
     } finally {
@@ -582,72 +544,13 @@ const PersonalPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        className="mt-12"
-        toastClassName="bg-white text-gray-900 rounded-xl shadow-lg p-4 flex items-center"
-        progressClassName="bg-blue-600"
-      />
+
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12 animate-fade-in"></div>
 
         <div className="bg-white bg-opacity-80 backdrop-blur-lg shadow-2xl rounded-3xl overflow-hidden animate-slide-up">
           {/* Header Section */}
           <div className="bg-gradient-to-r from-sky-900 to-purple-800 p-8 flex flex-col sm:flex-row items-center sm:items-start space-y-6 sm:space-y-0 sm:space-x-6">
-            <div className="relative group">
-              <img
-                src={avatarPreview}
-                alt="Avatar"
-                className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-xl transition-transform duration-300 group-hover:scale-105"
-              />
-              {isEditing && (
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  id="avatar-upload"
-                  aria-label="Tải lên ảnh đại diện"
-                />
-              )}
-              <button
-                className={`absolute bottom-0 right-0 p-2 rounded-full transition-all duration-300 ${
-                  isEditing
-                    ? "bg-blue-500 text-white hover:bg-blue-600 shadow-lg"
-                    : "bg-gray-300 text-gray-600 cursor-not-allowed"
-                }`}
-                onClick={() =>
-                  isEditing &&
-                  document.querySelector('input[type="file"]').click()
-                }
-                disabled={!isEditing}
-                aria-label="Chỉnh sửa ảnh đại diện"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L15.232 5.232z"
-                  />
-                </svg>
-              </button>
-            </div>
             <div className="text-center sm:text-left">
               <h2 className="text-3xl font-bold text-white">
                 {customer.fullname || "Chưa cập nhật"}
@@ -743,8 +646,8 @@ const PersonalPage = () => {
                     <p className="mt-1 text-gray-900 font-medium">
                       {customer.createDate
                         ? new Date(customer.createDate).toLocaleDateString(
-                            "vi-VN"
-                          )
+                          "vi-VN"
+                        )
                         : "Chưa cập nhật"}
                     </p>
                   </div>
@@ -755,8 +658,8 @@ const PersonalPage = () => {
                     <p className="mt-1 text-gray-900 font-medium">
                       {customer.updateDate
                         ? new Date(customer.updateDate).toLocaleDateString(
-                            "vi-VN"
-                          )
+                          "vi-VN"
+                        )
                         : "Chưa cập nhật"}
                     </p>
                   </div>

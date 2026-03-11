@@ -135,23 +135,26 @@ public class AuthService {
             throw new RuntimeException("Số điện thoại đã tồn tại.");
         }
 
-        // Tạo claims chứa dữ liệu đăng ký
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("email", request.getEmail());
-        claims.put("username", request.getUsername());
-        claims.put("phone", request.getPhone());
+        // Tạo tài khoản Customer mới
+        Customer customer = new Customer();
+        customer.setCustomerCode(CodeGeneratorHelper.generateCode("CUS"));
+        customer.setUsername(request.getUsername());
+        customer.setFullname(null); // Hoặc có thể lấy từ request nếu có
+        customer.setPassword(passwordEncoder.encode(request.getPassword()));
+        customer.setEmail(request.getEmail());
+        customer.setPhone(request.getPhone());
+        customer.setStatus(true); // Kích hoạt luôn
+        customer.setForgetPassword(false);
+        customer.setCreateDate(java.time.Instant.now());
 
-        // Mã hóa mật khẩu
-        String hashedPassword = passwordEncoder.encode(request.getPassword());
-        claims.put("password", hashedPassword);
+        customer = customerRepository.save(customer);
 
-        // Tạo token JWT
-        String token = jwtUtil.generateToken(request.getUsername(), claims);
-        String confirmationLink = "http://localhost:8080/auth/confirm?token=" + token;
+        // Ghi log
+        auditLogService.log("Customer", customer.getId(), "REGISTER", customer.getUsername(),
+                null, CustomerMapper.toCustomerResponse(customer),
+                "Người dùng đăng ký tài khoản mới (Kích hoạt trực tiếp): " + customer.getUsername());
 
-        mailService.sendVerificationMail(request.getUsername(), request.getEmail(), confirmationLink);
-
-        return "Đã gửi email xác nhận đến: " + request.getEmail();
+        return "Đăng ký thành công! Bạn có thể đăng nhập ngay bây giờ.";
     }
 
     public String confirmRegister(String token) {

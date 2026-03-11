@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
@@ -14,6 +15,8 @@ import SizeService from "../../../services/SizeService";
 import PromotionService from "../../../services/PromotionServices";
 
 export default function ProductDetail() {
+  const { role } = useSelector((state) => state.user);
+  const isAdmin = role === "ADMIN";
   const { productCode } = useParams();
 
   const [products, setProducts] = useState([]);
@@ -227,6 +230,7 @@ export default function ProductDetail() {
             handleToggleStatus={handleToggleStatus}
             handleUpdateProduct={handleUpdateProduct}
             openDeleteModal={openDeleteModal}
+            isAdmin={isAdmin}
           />
         </div>
       )}

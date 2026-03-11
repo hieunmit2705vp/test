@@ -10,6 +10,7 @@ import { FaShoppingCart, FaTrash, FaPlus, FaTimes } from "react-icons/fa";
 import { debounce } from "lodash";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import AlertModal from "../../../components/ui/AlertModal";
+import emptyBox from "../../../assets/empty_box.png";
 
 const SalePOSPage = () => {
   const [currentUser, setCurrentUser] = useState(null); // Lưu thông tin nhân viên
@@ -51,7 +52,7 @@ const SalePOSPage = () => {
     isOpen: false,
     title: "",
     message: "",
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   const validateForm = (newCustomer) => {
@@ -81,11 +82,8 @@ const SalePOSPage = () => {
   const [collar, setCollars] = useState([]);
   const [sleeve, setSleeves] = useState([]);
 
-  const [selectedVoucher, setSelectedVoucher] = useState("");
-  const [calculatedDiscount, setCalculatedDiscount] = useState(0);
   const [vouchers, setVouchers] = useState([]);
   const [optimalVoucher, setOptimalVoucher] = useState(null);
-  const [hasSelectedVoucher, setHasSelectedVoucher] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -106,8 +104,70 @@ const SalePOSPage = () => {
   const currentOrder = useMemo(() => {
     return activeOrderIndex !== null && activeOrderIndex < orders.length
       ? orders[activeOrderIndex]
-      : { items: [], totalAmount: 0, discount: 0 };
+      : { items: [], totalAmount: 0, discount: 0, voucherCode: "", isVoucherManuallySelected: false };
   }, [activeOrderIndex, orders]);
+
+  const selectedVoucher = currentOrder.voucherCode || "";
+  const isVoucherManuallySelected = currentOrder.isVoucherManuallySelected || false;
+
+  // --- Utility Functions ---
+  const parseDateVN = (dateStr) => {
+    if (!dateStr) return null;
+    let formattedStr = dateStr;
+    if (typeof dateStr === "string" && !dateStr.includes("T") && !dateStr.includes("Z")) {
+      formattedStr = dateStr.replace(" ", "T") + "+07:00";
+    }
+    const date = new Date(formattedStr);
+    return isNaN(date.getTime()) ? null : date;
+  };
+
+  const calculateDiscountValue = (voucher, totalAmount) => {
+    if (!voucher || totalAmount < (voucher.minCondition || 0)) return 0;
+    return Math.min(
+      (totalAmount * (voucher.reducedPercent || 0)) / 100,
+      voucher.maxDiscount || Infinity
+    );
+  };
+
+  const getEffectivePrice = (item) => {
+    const salePrice = Number(item.salePrice) || 0;
+    const now = new Date();
+    const startDate = parseDateVN(item.promotion?.startDate);
+    const endDate = parseDateVN(item.promotion?.endDate);
+    
+    const isPromotionActive = item.promotion?.status === true && 
+                             startDate && endDate && 
+                             now >= startDate && now <= endDate;
+    
+    const discountPercent = isPromotionActive ? (Number(item.promotion?.promotionPercent) || 0) : 0;
+    return salePrice * (1 - discountPercent / 100);
+  };
+
+  const formatCurrency = (value) => {
+    return value
+      ? value.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
+      : "0 VND";
+  };
+  // -------------------------
+
+
+  const calculatedDiscount = useMemo(() => {
+    if (!selectedVoucher || !vouchers.length) return 0;
+    const voucher = vouchers.find((v) => v.voucherCode === selectedVoucher);
+    if (!voucher) return 0;
+
+    const now = new Date();
+    const startDate = parseDateVN(voucher.startDate);
+    const endDate = parseDateVN(voucher.endDate);
+
+    const isVoucherValid = 
+      voucher.status === true &&
+      currentOrder.totalAmount >= (voucher.minCondition || 0) &&
+      (!startDate || now >= startDate) &&
+      (!endDate || now <= endDate);
+
+    return isVoucherValid ? calculateDiscountValue(voucher, currentOrder.totalAmount) : 0;
+  }, [selectedVoucher, vouchers, currentOrder.totalAmount]);
 
   const [showAddCustomerForm, setShowAddCustomerForm] = useState(false);
   const [newCustomer, setNewCustomer] = useState({
@@ -137,12 +197,18 @@ const SalePOSPage = () => {
     fetchCurrentUser();
   }, []);
 
-  // Utility function to format currency
-  const formatCurrency = (value) => {
-    return value
-      ? value.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
-      : "0 VND";
-  };
+  // Tự động ẩn thông báo sau 5 giây
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+
+
 
   useEffect(() => {
     fetchProductDetails();
@@ -178,22 +244,7 @@ const SalePOSPage = () => {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter((product) => {
-        const now = new Date();
-        const startDate = product.promotion?.startDate
-          ? new Date(product.promotion.startDate)
-          : null;
-        const endDate = product.promotion?.endDate
-          ? new Date(product.promotion.endDate)
-          : null;
-        const isPromotionActive =
-          startDate && endDate && now >= startDate && now <= endDate;
-        const discountPercent = isPromotionActive
-          ? product.promotion?.promotionPercent || 0
-          : 0;
-        const effectivePrice =
-          discountPercent > 0
-            ? product.salePrice * (1 - discountPercent / 100)
-            : product.salePrice;
+        const effectivePrice = getEffectivePrice(product);
 
         const fields = [
           product.id?.toString() || "",
@@ -232,23 +283,7 @@ const SalePOSPage = () => {
     const minPrice = Number(filter.minPrice) || 0;
     const maxPrice = Number(filter.maxPrice) || Infinity;
     filtered = filtered.filter((product) => {
-      const now = new Date();
-      const startDate = product.promotion?.startDate
-        ? new Date(product.promotion.startDate)
-        : null;
-      const endDate = product.promotion?.endDate
-        ? new Date(product.promotion.endDate)
-        : null;
-      const isPromotionActive =
-        startDate && endDate && now >= startDate && now <= endDate;
-      const discountPercent = isPromotionActive
-        ? product.promotion?.promotionPercent || 0
-        : 0;
-      const effectivePrice =
-        discountPercent > 0
-          ? product.salePrice * (1 - discountPercent / 100)
-          : product.salePrice;
-
+      const effectivePrice = getEffectivePrice(product);
       return effectivePrice >= minPrice && effectivePrice <= maxPrice;
     });
 
@@ -256,61 +291,46 @@ const SalePOSPage = () => {
     setCurrentPage(1);
   }, [searchTerm, allProducts, filter]);
 
+  // Tự động chọn voucher tối ưu dựa trên điều kiện thời gian thực
   useEffect(() => {
-    if (currentOrder?.totalAmount > 0) {
-      const validVouchers = vouchers.filter((v) => {
-        const now = new Date();
-        const startDate = new Date(v.startDate);
-        const endDate = new Date(v.endDate);
-        return (
-          v.status === true &&
-          currentOrder.totalAmount >= v.minCondition &&
-          now >= startDate &&
-          now <= endDate
-        );
-      });
+    if (activeOrderIndex === null || !vouchers.length || currentOrder.totalAmount <= 0) return;
 
-      const vouchersWithDiscount = validVouchers.map((voucher) => ({
-        ...voucher,
-        discountValue: calculateDiscount(voucher, currentOrder.totalAmount),
-      }));
-
-      const sortedVouchers = vouchersWithDiscount.sort(
-        (a, b) => b.discountValue - a.discountValue
+    const validVouchers = vouchers.filter((v) => {
+      const now = new Date();
+      const startDate = parseDateVN(v.startDate);
+      const endDate = parseDateVN(v.endDate);
+      
+      return (
+        v.status === true &&
+        currentOrder.totalAmount >= (v.minCondition || 0) &&
+        (!startDate || now >= startDate) &&
+        (!endDate || now <= endDate)
       );
+    });
 
-      const bestVoucher = sortedVouchers[0];
-      setOptimalVoucher(bestVoucher || null);
+    const bestVoucher = validVouchers
+      .map(v => ({ ...v, discountVal: calculateDiscountValue(v, currentOrder.totalAmount) }))
+      .sort((a, b) => b.discountVal - a.discountVal)[0];
 
-      if (bestVoucher && !hasSelectedVoucher) {
-        handleVoucherChange(bestVoucher.voucherCode);
-      } else if (!bestVoucher) {
-        setSelectedVoucher("");
-        setCalculatedDiscount(0);
+    // Cập nhật optimalVoucher để hiển thị thông tin gợi ý
+    setOptimalVoucher(bestVoucher || null);
+
+    const currentVoucherValid = calculatedDiscount > 0;
+    
+    // logic tự động chọn:
+    // 1. Nếu voucher hiện tại không còn hiệu lực (calculatedDiscount = 0 dù có code)
+    // 2. Hoặc nếu chưa chọn thủ công và có cái nào tốt hơn cái đang chọn
+    if (!currentVoucherValid || (!isVoucherManuallySelected && bestVoucher && selectedVoucher !== bestVoucher.voucherCode)) {
+      if (bestVoucher && selectedVoucher !== bestVoucher.voucherCode && (!isVoucherManuallySelected || !currentVoucherValid)) {
+        console.log("🤖 Hệ thống tự động chọn Voucher tốt nhất:", bestVoucher.voucherCode);
+        handleVoucherChange(bestVoucher.voucherCode, false);
+      } else if (!bestVoucher && selectedVoucher !== "" && !isVoucherManuallySelected) {
+        console.log("🤖 Không còn Voucher hợp lệ, tự động gỡ bỏ.");
+        handleVoucherChange("", false);
       }
-    } else {
-      setOptimalVoucher(null);
-      setSelectedVoucher("");
-      setCalculatedDiscount(0);
     }
-  }, [currentOrder.totalAmount, vouchers, hasSelectedVoucher]);
+  }, [currentOrder.totalAmount, vouchers, activeOrderIndex, calculatedDiscount, isVoucherManuallySelected, selectedVoucher]);
 
-  useEffect(() => {
-    if (activeOrderIndex !== null && selectedVoucher) {
-      const voucher = vouchers.find((v) => v.voucherCode === selectedVoucher);
-      if (voucher && currentOrder.totalAmount >= voucher.minCondition) {
-        const discountAmount = calculateDiscount(
-          voucher,
-          currentOrder.totalAmount
-        );
-        setCalculatedDiscount(discountAmount);
-      } else {
-        setCalculatedDiscount(0);
-      }
-    } else {
-      setCalculatedDiscount(0);
-    }
-  }, [currentOrder.totalAmount, selectedVoucher, vouchers, activeOrderIndex]);
 
   const fetchProductDetails = async () => {
     try {
@@ -408,48 +428,26 @@ const SalePOSPage = () => {
     setIsSearching(false);
   };
 
-  const handleVoucherChange = (voucherCode) => {
-    console.log("📌 Voucher được chọn:", voucherCode);
-    setSelectedVoucher(voucherCode);
-    setHasSelectedVoucher(true);
+  const handleVoucherChange = (voucherCode, isManual = true) => {
+    console.log(`📌 Voucher được chọn (${isManual ? "Thủ công" : "Tự động"}):`, voucherCode);
+    
+    if (activeOrderIndex === null) return;
 
     const voucher = vouchers.find((v) => v.voucherCode === voucherCode);
-    console.log("📌 Voucher tìm thấy:", voucher);
 
-    if (voucher && currentOrder.totalAmount >= voucher.minCondition) {
-      const discountAmount = calculateDiscount(
-        voucher,
-        currentOrder.totalAmount
-      );
-      console.log("✅ Giảm giá áp dụng:", discountAmount);
-      setCalculatedDiscount(discountAmount);
-      if (activeOrderIndex !== null) {
-        setOrders((prevOrders) => {
-          const updatedOrders = [...prevOrders];
-          updatedOrders[activeOrderIndex].voucherId = voucher.id;
-          return updatedOrders;
-        });
-      }
-    } else {
-      console.log("❌ Không đủ điều kiện để áp dụng voucher.");
-      setCalculatedDiscount(0);
-      if (activeOrderIndex != null) {
-        setOrders((prevOrders) => {
-          const updatedOrders = [...prevOrders];
-          updatedOrders[activeOrderIndex].voucherId = null;
-          return updatedOrders;
-        });
-      }
-    }
+    setOrders((prevOrders) => {
+      const updatedOrders = [...prevOrders];
+      const order = { ...updatedOrders[activeOrderIndex] };
+      
+      order.voucherId = voucher ? voucher.id : null;
+      order.voucherCode = voucherCode;
+      order.isVoucherManuallySelected = isManual && !!voucherCode;
+      
+      updatedOrders[activeOrderIndex] = order;
+      return updatedOrders;
+    });
   };
 
-  const calculateDiscount = (voucher, totalAmount) => {
-    if (!voucher || totalAmount < voucher.minCondition) return 0;
-    return Math.min(
-      (totalAmount * voucher.reducedPercent) / 100,
-      voucher.maxDiscount
-    );
-  };
 
   const handleAddNewCustomerClick = () => {
     setShowAddCustomerForm(true);
@@ -561,6 +559,8 @@ const SalePOSPage = () => {
             discount: 0,
             customerId: orderData.customerId,
             voucherId: orderData.voucherId,
+            voucherCode: selectedVoucher || "",
+            isVoucherManuallySelected: isVoucherManuallySelected,
             paymentMethod: orderData.paymentMethod,
             createdAt: new Date(),
           },
@@ -576,7 +576,6 @@ const SalePOSPage = () => {
         return updatedOrders;
       });
       setActiveOrderIndex(orders.length);
-      setHasSelectedVoucher(false);
     } catch (error) {
       console.error("❌ Lỗi khi tạo đơn hàng:", error);
       setNotification({
@@ -762,10 +761,7 @@ const SalePOSPage = () => {
         });
       }
       currentOrder.totalAmount = currentOrder.items.reduce((sum, item) => {
-        const salePrice = Number(item.salePrice) || 0;
-        const discountPercent = Number(item.promotion?.promotionPercent) || 0;
-        const discountedPrice = salePrice * (1 - discountPercent / 100);
-        return sum + discountedPrice * item.quantity;
+        return sum + getEffectivePrice(item) * item.quantity;
       }, 0);
       console.log(
         "💰 [TỔNG] Tổng tiền đơn hàng sau khi thêm sản phẩm:",
@@ -806,10 +802,7 @@ const SalePOSPage = () => {
         (item) => item.id !== productId
       );
       currentOrder.totalAmount = currentOrder.items.reduce((sum, item) => {
-        const salePrice = Number(item.salePrice) || 0;
-        const discountPercent = Number(item.promotion?.promotionPercent) || 0;
-        const discountedPrice = salePrice * (1 - discountPercent / 100);
-        return sum + discountedPrice * item.quantity;
+        return sum + getEffectivePrice(item) * item.quantity;
       }, 0);
       console.log(
         "💰 [TỔNG] Tổng tiền sau khi xóa sản phẩm:",
@@ -865,10 +858,7 @@ const SalePOSPage = () => {
         return updatedOrders;
       }
       currentOrder.totalAmount = currentOrder.items.reduce((sum, item) => {
-        const salePrice = Number(item.salePrice) || 0;
-        const discountPercent = Number(item.promotion?.promotionPercent) || 0;
-        const discountedPrice = salePrice * (1 - discountPercent / 100);
-        return sum + discountedPrice * item.quantity;
+        return sum + getEffectivePrice(item) * item.quantity;
       }, 0);
       console.log(
         "💰 [TOTAL] Tổng tiền đơn hàng sau khi cập nhật số lượng:",
@@ -887,6 +877,7 @@ const SalePOSPage = () => {
       setDiscount(order.discount);
       setPaymentMethod(order.paymentMethod === 0 ? "cash" : "bank_transfer");
       setShowOwnerQR(order.paymentMethod === 1);
+      
       if (order.customerId === "walk-in") {
         setCustomerName("Khách vãng lai");
         setPhone("");
@@ -922,6 +913,7 @@ const SalePOSPage = () => {
       message: `Bạn có chắc chắn muốn xóa hóa đơn #${index + 1}? Hóa đơn sẽ được đánh dấu là đã hủy.`,
       onConfirm: async () => {
         try {
+          setIsLoading(true);
           // Gọi API để hủy đơn hàng
           console.log(`📡 Gửi yêu cầu hủy hóa đơn ID: ${orderToCancel.id}`);
           const response = await SalePOS.cancelOrder(orderToCancel.id);
@@ -965,11 +957,12 @@ const SalePOSPage = () => {
           });
           setTimeout(() => setNotification(null), 3000);
         } finally {
+          setIsLoading(false);
           setConfirmModal({
             isOpen: false,
             title: "",
             message: "",
-            onConfirm: () => {},
+            onConfirm: () => { },
           });
         }
       },
@@ -1052,6 +1045,7 @@ const SalePOSPage = () => {
           })),
         };
         try {
+          setIsLoading(true);
           await SalePOS.updatePaymentMethod(currentOrder.id, paymentMethod);
           console.log("✅ Đã cập nhật phương thức thanh toán:", paymentMethod);
 
@@ -1087,13 +1081,15 @@ const SalePOSPage = () => {
               "Có lỗi xảy ra khi thanh toán: " +
               (error.response?.data?.message || error.message),
           });
+        } finally {
+          setIsLoading(false);
+          setConfirmModal({
+            isOpen: false,
+            title: "",
+            message: "",
+            onConfirm: () => { },
+          });
         }
-        setConfirmModal({
-          isOpen: false,
-          title: "",
-          message: "",
-          onConfirm: () => {},
-        });
       },
     });
   };
@@ -1108,8 +1104,6 @@ const SalePOSPage = () => {
     setTotalAmount(0);
     setCustomerPaid(0);
     setChangeAmount(0);
-    setSelectedVoucher("");
-    setCalculatedDiscount(0);
     setShowAddCustomerForm(false);
     setNewCustomer({
       fullname: "",
@@ -1117,7 +1111,6 @@ const SalePOSPage = () => {
       email: "",
     });
     setShowOwnerQR(false);
-    setHasSelectedVoucher(false);
   };
 
   const handlePaymentMethodChange = (newMethod) => {
@@ -1133,13 +1126,12 @@ const SalePOSPage = () => {
     <div className="p-4 bg-gray-100 min-h-screen relative">
       {notification && (
         <div
-          className={`fixed top-4 right-4 p-4 rounded shadow-lg text-white ${
-            notification.type === "success"
+          className={`fixed top-4 right-4 p-4 rounded shadow-lg text-white z-50 ${notification.type === "success"
               ? "bg-green-500"
               : notification.type === "error"
                 ? "bg-red-500"
                 : "bg-yellow-500"
-          }`}
+            }`}
         >
           {notification.message}
         </div>
@@ -1158,12 +1150,13 @@ const SalePOSPage = () => {
             isOpen: false,
             title: "",
             message: "",
-            onConfirm: () => {},
+            onConfirm: () => { },
           })
         }
         onConfirm={confirmModal.onConfirm}
         title={confirmModal.title}
         message={confirmModal.message}
+        isLoading={isLoading}
       />
 
       {showAddCustomerForm && (
@@ -1188,9 +1181,8 @@ const SalePOSPage = () => {
                   name="fullname"
                   value={newCustomer.fullname}
                   onChange={handleNewCustomerInputChange}
-                  className={`mt-1 block w-full border rounded-md shadow-sm p-2 ${
-                    formErrors.fullname ? "border-red-500" : "border-gray-300"
-                  }`}
+                  className={`mt-1 block w-full border rounded-md shadow-sm p-2 ${formErrors.fullname ? "border-red-500" : "border-gray-300"
+                    }`}
                   placeholder="Nhập họ tên khách hàng"
                 />
                 {formErrors.fullname && (
@@ -1209,9 +1201,8 @@ const SalePOSPage = () => {
                   name="username"
                   value={newCustomer.username}
                   onChange={handleNewCustomerInputChange}
-                  className={`mt-1 block w-full border rounded-md shadow-sm p-2 ${
-                    formErrors.username ? "border-red-500" : "border-gray-300"
-                  }`}
+                  className={`mt-1 block w-full border rounded-md shadow-sm p-2 ${formErrors.username ? "border-red-500" : "border-gray-300"
+                    }`}
                   placeholder="Nhập Nickname khách hàng"
                 />
                 {formErrors.username && (
@@ -1230,9 +1221,8 @@ const SalePOSPage = () => {
                   name="phone"
                   value={newCustomer.phone}
                   onChange={handleNewCustomerInputChange}
-                  className={`mt-1 block w-full border rounded-md shadow-sm p-2 ${
-                    formErrors.phone ? "border-red-500" : "border-gray-300"
-                  }`}
+                  className={`mt-1 block w-full border rounded-md shadow-sm p-2 ${formErrors.phone ? "border-red-500" : "border-gray-300"
+                    }`}
                   placeholder="Nhập số điện thoại"
                 />
                 {formErrors.phone && (
@@ -1250,9 +1240,8 @@ const SalePOSPage = () => {
                   name="email"
                   value={newCustomer.email}
                   onChange={handleNewCustomerInputChange}
-                  className={`mt-1 block w-full border rounded-md shadow-sm p-2 ${
-                    formErrors.email ? "border-red-500" : "border-gray-300"
-                  }`}
+                  className={`mt-1 block w-full border rounded-md shadow-sm p-2 ${formErrors.email ? "border-red-500" : "border-gray-300"
+                    }`}
                   placeholder="Nhập email (bắt buộc)"
                 />
                 {formErrors.email && (
@@ -1280,9 +1269,8 @@ const SalePOSPage = () => {
                 <button
                   onClick={handleSaveNewCustomer}
                   disabled={isLoading}
-                  className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
-                    isLoading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
-                  }`}
+                  className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${isLoading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+                    }`}
                 >
                   {isLoading ? (
                     <svg
@@ -1338,21 +1326,20 @@ const SalePOSPage = () => {
                 ? orderTimers[index]
                 : order.createdAt
                   ? Math.max(
-                      30 * 60 -
-                        Math.floor(
-                          (new Date() - new Date(order.createdAt)) / 1000
-                        ),
-                      0
-                    )
+                    30 * 60 -
+                    Math.floor(
+                      (new Date() - new Date(order.createdAt)) / 1000
+                    ),
+                    0
+                  )
                   : 30 * 60;
             return (
               <div
                 key={order.id}
-                className={`min-w-[150px] cursor-pointer p-2 mr-2 rounded ${
-                  index === activeOrderIndex
+                className={`min-w-[150px] cursor-pointer p-2 mr-2 rounded ${index === activeOrderIndex
                     ? "bg-blue-100 border border-blue-500"
                     : "bg-gray-100"
-                }`}
+                  }`}
                 onClick={() => handleSwitchOrder(index)}
               >
                 <div className="flex justify-between items-center">
@@ -1392,7 +1379,7 @@ const SalePOSPage = () => {
           {!activeOrderIndex && activeOrderIndex !== 0 ? (
             <div className="text-center text-gray-500 p-4">
               <img
-                src="/src/assets/empty_box.png"
+                src={emptyBox}
                 alt="Empty"
                 className="w-32 mx-auto"
               />
@@ -1401,102 +1388,100 @@ const SalePOSPage = () => {
           ) : currentOrder.items.length === 0 ? (
             <div className="text-center text-gray-500 p-4">
               <img
-                src="/src/assets/empty_box.png"
+                src={emptyBox}
                 alt="Empty"
                 className="w-32 mx-auto"
               />
               <p>Giỏ hàng của bạn chưa có sản phẩm nào!</p>
             </div>
           ) : (
-            <table className="min-w-full border">
-              <thead className="bg-gray-200">
-                <tr>
-                  <th className="p-2">Mã Sản Phẩm</th>
-                  <th className="p-2">Tên Sản Phẩm</th>
-                  <th className="p-2">Màu Sắc</th>
-                  <th className="p-2">Kích Thước</th>
-                  <th className="p-2">Cố Áo</th>
-                  <th className="p-2">Tay Áo</th>
-                  <th className="p-2">Giá Gốc</th>
-                  <th className="p-2">Giảm Giá</th>
-                  <th className="p-2">Số Lượng</th>
-                  <th className="p-2">Thành Tiền</th>
-                  <th className="p-2">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentOrder.items.map((item) => {
-                  const discountPercent = item.promotion?.promotionPercent || 0;
-                  const discountedPrice =
-                    discountPercent > 0
-                      ? item.salePrice * (1 - discountPercent / 100)
-                      : item.salePrice;
-                  return (
-                    <tr key={item.id} className="text-center border">
-                      <td className="p-2">
-                        {item.productDetailCode || "Không có mã"}
-                      </td>
-                      <td className="p-2">
-                        {item.product?.productName || "Không có tên"}
-                      </td>
-                      <td className="p-2">
-                        {item.color?.name || "Không có mã"}
-                      </td>
-                      <td className="p-2">
-                        {item.size?.name || "Không có mã"}
-                      </td>
-                      <td className="p-2">
-                        {item.collar?.name || "Không có mã"}
-                      </td>
-                      <td className="p-2">
-                        {item.sleeve?.sleeveName || "Không có mã"}
-                      </td>
-                      <td className="p-2 text-blue-600 font-bold">
-                        {item.salePrice?.toLocaleString()} VND
-                      </td>
-                      <td className="p-2 text-blue-600 font-bold">
-                        {(item.salePrice - discountedPrice).toLocaleString()}{" "}
-                        VND
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="number"
-                          min="1"
-                          max={item.quantityAvailable || 1}
-                          value={
-                            isNaN(item.quantity) || item.quantity < 1
-                              ? 1
-                              : item.quantity
-                          }
-                          onChange={(e) => {
-                            const newQuantity = parseInt(e.target.value) || 1;
-                            if (newQuantity > item.quantityAvailable) {
-                              alert(
-                                `Sản phẩm "${item.product?.productName}" chỉ còn ${item.quantityAvailable} sản phẩm trong kho.`
-                              );
-                              return;
+            <div className="overflow-x-auto">
+              <table className="min-w-full border">
+                <thead className="bg-gray-200">
+                  <tr>
+                    <th className="p-2">Mã Sản Phẩm</th>
+                    <th className="p-2">Tên Sản Phẩm</th>
+                    <th className="p-2">Màu Sắc</th>
+                    <th className="p-2">Kích Thước</th>
+                    <th className="p-2">Cố Áo</th>
+                    <th className="p-2">Tay Áo</th>
+                    <th className="p-2">Giá Gốc</th>
+                    <th className="p-2">Giảm Giá</th>
+                    <th className="p-2">Số Lượng</th>
+                    <th className="p-2">Thành Tiền</th>
+                    <th className="p-2">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentOrder.items.map((item) => {
+                    const discountedPrice = getEffectivePrice(item);
+                    return (
+                      <tr key={item.id} className="text-center border">
+                        <td className="p-2">
+                          {item.productDetailCode || "Không có mã"}
+                        </td>
+                        <td className="p-2">
+                          {item.product?.productName || "Không có tên"}
+                        </td>
+                        <td className="p-2">
+                          {item.color?.name || "Không có mã"}
+                        </td>
+                        <td className="p-2">
+                          {item.size?.name || "Không có mã"}
+                        </td>
+                        <td className="p-2">
+                          {item.collar?.name || "Không có mã"}
+                        </td>
+                        <td className="p-2">
+                          {item.sleeve?.sleeveName || "Không có mã"}
+                        </td>
+                        <td className="p-2 text-blue-600 font-bold">
+                          {item.salePrice?.toLocaleString()} VND
+                        </td>
+                        <td className="p-2 text-blue-600 font-bold">
+                          {(item.salePrice - discountedPrice).toLocaleString()}{" "}
+                          VND
+                        </td>
+                        <td className="p-2">
+                          <input
+                            type="number"
+                            min="1"
+                            max={item.quantityAvailable || 1}
+                            value={
+                              isNaN(item.quantity) || item.quantity < 1
+                                ? 1
+                                : item.quantity
                             }
-                            handleQuantityChange(item.id, newQuantity);
-                          }}
-                          className="w-16 p-1 text-center border rounded"
-                        />
-                      </td>
-                      <td className="p-2 text-blue-600 font-bold">
-                        {(discountedPrice * item.quantity).toLocaleString()} VND
-                      </td>
-                      <td className="p-2">
-                        <button
-                          onClick={() => handleRemoveFromCart(item.id)}
-                          className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded"
-                        >
-                          <FaTrash />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            onChange={(e) => {
+                              const newQuantity = parseInt(e.target.value) || 1;
+                              if (newQuantity > item.quantityAvailable) {
+                                alert(
+                                  `Sản phẩm "${item.product?.productName}" chỉ còn ${item.quantityAvailable} sản phẩm trong kho.`
+                                );
+                                return;
+                              }
+                              handleQuantityChange(item.id, newQuantity);
+                            }}
+                            className="w-16 p-1 text-center border rounded"
+                          />
+                        </td>
+                        <td className="p-2 text-blue-600 font-bold">
+                          {(discountedPrice * item.quantity).toLocaleString()} VND
+                        </td>
+                        <td className="p-2">
+                          <button
+                            onClick={() => handleRemoveFromCart(item.id)}
+                            className="bg-blue-500 hover:bg-blue-700 text-white p-1 rounded"
+                          >
+                            <FaTrash />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-2">Danh sách sản phẩm</h3>
@@ -1570,117 +1555,178 @@ const SalePOSPage = () => {
                 </select>
               </div>
             </div>
-            <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="py-2 px-4 border-b text-left">Mã sản phẩm</th>
-                  <th className="py-2 px-4 border-b text-left">Tên sản phẩm</th>
-                  <th className="py-2 px-4 border-b text-left">Màu sắc</th>
-                  <th className="py-2 px-4 border-b text-left">Kích thước</th>
-                  <th className="py-2 px-4 border-b text-left">Cổ áo</th>
-                  <th className="py-2 px-4 border-b text-left">Tay áo</th>
-                  <th className="py-2 px-4 border-b text-left">Số lượng</th>
-                  <th className="py-2 px-4 border-b text-left">Giá gốc</th>
-                  <th className="py-2 px-4 border-b text-left">Giảm giá</th>
-                  <th className="py-2 px-4 border-b text-left">Giá bán</th>
-                  <th className="py-2 px-4 border-b text-center">Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentProducts.length > 0 ? (
-                  currentProducts.map((product) => {
-                    const now = new Date();
-                    const startDate = product.promotion?.startDate
-                      ? new Date(product.promotion.startDate)
-                      : null;
-                    const endDate = product.promotion?.endDate
-                      ? new Date(product.promotion.endDate)
-                      : null;
-                    const isPromotionActive =
-                      startDate &&
-                      endDate &&
-                      now >= startDate &&
-                      now <= endDate;
-                    const discountPercent = isPromotionActive
-                      ? product.promotion.promotionPercent
-                      : 0;
-                    const discount =
-                      discountPercent > 0 ? `${discountPercent}%` : "___";
-                    const discountedPrice =
-                      discountPercent > 0
-                        ? product.salePrice * (1 - discountPercent / 100)
-                        : product.salePrice;
-                    return (
-                      <tr key={product.id} className="hover:bg-gray-50">
-                        <td className="py-2 px-4 border-b">
-                          {product.productDetailCode}
-                        </td>
-                        <td className="py-2 px-4 border-b">
-                          {product.product?.productName}
-                        </td>
-                        <td className="py-2 px-4 border-b">
-                          {product.color?.name}
-                        </td>
-                        <td className="py-2 px-4 border-b">
-                          {product.size?.name}
-                        </td>
-                        <td className="py-2 px-4 border-b">
-                          {product.collar?.name || "Không xác định"}
-                        </td>
-                        <td className="py-2 px-4 border-b">
-                          {product.sleeve?.sleeveName || "Không xác định"}
-                        </td>
-                        <td className="py-2 px-4 border-b text-center">
-                          {product.quantity || 0}
-                        </td>
-                        <td className="py-2 px-4 border-b text-blue-600 font-semibold">
-                          {formatCurrency(product.salePrice)}
-                        </td>
-                        <td className="py-2 px-4 border-b text-blue-600 font-semibold">
-                          {discount}
-                        </td>
-                        <td className="py-2 px-4 border-b text-blue-600 font-semibold">
-                          {formatCurrency(discountedPrice)}
-                        </td>
-                        <td className="py-2 px-4 border-b text-center">
-                          <button
-                            onClick={() => handleAddToCart(product)}
-                            className="bg-blue-500 hover:bg-blue-700 text-white p-2 rounded"
-                          >
-                            <FaShoppingCart size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={8} className="py-4 text-center text-gray-500">
-                      Không tìm thấy sản phẩm nào
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="py-2 px-4 border-b text-left">Mã sản phẩm</th>
+                    <th className="py-2 px-4 border-b text-left">Tên sản phẩm</th>
+                    <th className="py-2 px-4 border-b text-left">Màu sắc</th>
+                    <th className="py-2 px-4 border-b text-left">Kích thước</th>
+                    <th className="py-2 px-4 border-b text-left">Cổ áo</th>
+                    <th className="py-2 px-4 border-b text-left">Tay áo</th>
+                    <th className="py-2 px-4 border-b text-left">Số lượng</th>
+                    <th className="py-2 px-4 border-b text-left">Giá gốc</th>
+                    <th className="py-2 px-4 border-b text-left">Giảm giá</th>
+                    <th className="py-2 px-4 border-b text-left">Giá bán</th>
+                    <th className="py-2 px-4 border-b text-center">Hành động</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-            <div className="flex justify-center mt-4">
-              {Array.from(
-                {
-                  length: Math.ceil(filteredProducts.length / productsPerPage),
-                },
-                (_, index) => (
-                  <button
-                    key={index + 1}
-                    onClick={() => paginate(index + 1)}
-                    className={`mx-1 px-3 py-1 rounded ${
-                      currentPage === index + 1
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-200"
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                )
-              )}
+                </thead>
+                <tbody>
+                  {currentProducts.length > 0 ? (
+                    currentProducts.map((product) => {
+                      const discountedPrice = getEffectivePrice(product);
+                      const discountValue = Math.round(product.salePrice - discountedPrice);
+                      const discount = discountValue > 0 ? formatCurrency(discountValue) : "___";
+                      return (
+                        <tr key={product.id} className="hover:bg-gray-50">
+                          <td className="py-2 px-4 border-b">
+                            {product.productDetailCode}
+                          </td>
+                          <td className="py-2 px-4 border-b">
+                            {product.product?.productName}
+                          </td>
+                          <td className="py-2 px-4 border-b">
+                            {product.color?.name}
+                          </td>
+                          <td className="py-2 px-4 border-b">
+                            {product.size?.name}
+                          </td>
+                          <td className="py-2 px-4 border-b">
+                            {product.collar?.name || "Không xác định"}
+                          </td>
+                          <td className="py-2 px-4 border-b">
+                            {product.sleeve?.sleeveName || "Không xác định"}
+                          </td>
+                          <td className="py-2 px-4 border-b text-center">
+                            {product.quantity || 0}
+                          </td>
+                          <td className="py-2 px-4 border-b text-blue-600 font-semibold">
+                            {formatCurrency(product.salePrice)}
+                          </td>
+                          <td className="py-2 px-4 border-b text-blue-600 font-semibold">
+                            {discount}
+                          </td>
+                          <td className="py-2 px-4 border-b text-blue-600 font-semibold">
+                            {formatCurrency(discountedPrice)}
+                          </td>
+                          <td className="py-2 px-4 border-b text-center">
+                            <button
+                              onClick={() => handleAddToCart(product)}
+                              className="bg-blue-500 hover:bg-blue-700 text-white p-2 rounded"
+                            >
+                              <FaShoppingCart size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="py-4 text-center text-gray-500">
+                        Không tìm thấy sản phẩm nào
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-center mt-4 items-center space-x-1">
+              {(() => {
+                const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+                if (totalPages <= 1) return null;
+
+                const pages = [];
+                const leftSide = 2; // Hiển thị 2 trang bên trái
+                const rightSide = 2; // Hiển thị 2 trang bên phải
+
+                if (totalPages <= 7) {
+                  for (let i = 1; i <= totalPages; i++) pages.push(i);
+                } else {
+                  pages.push(1);
+                  if (currentPage > leftSide + 2) {
+                    pages.push("...");
+                  }
+
+                  const start = Math.max(2, currentPage - leftSide);
+                  const end = Math.min(totalPages - 1, currentPage + rightSide);
+
+                  for (let i = start; i <= end; i++) {
+                    pages.push(i);
+                  }
+
+                  if (currentPage < totalPages - rightSide - 1) {
+                    pages.push("...");
+                  }
+                  pages.push(totalPages);
+                }
+
+                return (
+                  <>
+                    <button
+                      onClick={() => paginate(1)}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-1 rounded transition-colors ${currentPage === 1
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold"
+                        }`}
+                      title="Trang đầu"
+                    >
+                      {"<<"}
+                    </button>
+                    <button
+                      onClick={() => paginate(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-1 rounded transition-colors ${currentPage === 1
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold"
+                        }`}
+                      title="Trang trước"
+                    >
+                      {"<"}
+                    </button>
+
+                    {pages.map((page, index) => (
+                      <button
+                        key={index}
+                        onClick={() => typeof page === "number" && paginate(page)}
+                        disabled={page === "..."}
+                        className={`px-3 py-1 rounded transition-colors ${currentPage === page
+                            ? "bg-blue-500 text-white font-bold shadow-md scale-105"
+                            : page === "..."
+                              ? "bg-transparent cursor-default text-gray-400"
+                              : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => paginate(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-1 rounded transition-colors ${currentPage === totalPages
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold"
+                        }`}
+                      title="Trang sau"
+                    >
+                      {">"}
+                    </button>
+                    <button
+                      onClick={() => paginate(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-1 rounded transition-colors ${currentPage === totalPages
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold"
+                        }`}
+                      title="Trang cuối"
+                    >
+                      {">>"}
+                    </button>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -1804,7 +1850,7 @@ const SalePOSPage = () => {
           <div className="mt-2">
             <select
               value={selectedVoucher}
-              onChange={(e) => handleVoucherChange(e.target.value)}
+              onChange={(e) => handleVoucherChange(e.target.value, true)} // Gọi thủ công khi người dùng tương tác
               className="border p-2 w-full mt-1 rounded-md"
             >
               <option value="" disabled>
@@ -1813,31 +1859,25 @@ const SalePOSPage = () => {
               {vouchers
                 .filter((v) => {
                   const now = new Date();
-                  const startDate = new Date(v.startDate);
-                  const endDate = new Date(v.endDate);
+                  const startDate = parseDateVN(v.startDate);
+                  const endDate = parseDateVN(v.endDate);
                   return (
                     v.status === true &&
-                    currentOrder?.totalAmount >= v.minCondition &&
-                    now >= startDate &&
-                    now <= endDate
+                    currentOrder?.totalAmount >= (v.minCondition || 0) &&
+                    (!startDate || now >= startDate) &&
+                    (!endDate || now <= endDate)
                   );
                 })
                 .sort((a, b) => {
-                  const discountA = calculateDiscount(
-                    a,
-                    currentOrder.totalAmount
-                  );
-                  const discountB = calculateDiscount(
-                    b,
-                    currentOrder.totalAmount
-                  );
+                  const discountA = calculateDiscountValue(a, currentOrder.totalAmount);
+                  const discountB = calculateDiscountValue(b, currentOrder.totalAmount);
                   return discountB - discountA;
                 })
                 .map((v) => (
                   <option key={v.id} value={v.voucherCode}>
                     {v.voucherCode} - {v.voucherName} - {v.reducedPercent}%
                     (Giảm{" "}
-                    {calculateDiscount(
+                    {calculateDiscountValue(
                       v,
                       currentOrder.totalAmount
                     ).toLocaleString()}{" "}

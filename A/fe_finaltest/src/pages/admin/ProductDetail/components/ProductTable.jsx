@@ -7,6 +7,7 @@ const ProductTable = ({
   handleToggleStatus,
   handleUpdateProduct,
   openDeleteModal,
+  isAdmin,
 }) => {
   return (
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
@@ -24,8 +25,8 @@ const ProductTable = ({
               <th className="px-3 py-2 text-center font-semibold text-sm">Số lượng</th>
               <th className="px-3 py-2 text-right font-semibold text-sm">Giá nhập</th>
               <th className="px-3 py-2 text-right font-semibold text-sm">Đơn giá</th>
-              <th className="px-3 py-2 text-center font-semibold text-sm">Trạng thái</th>
-              <th className="px-3 py-2 text-center font-semibold text-sm">Thao tác</th>
+              {isAdmin && <th className="px-3 py-2 text-center font-semibold text-sm">Trạng thái</th>}
+              {isAdmin && <th className="px-3 py-2 text-center font-semibold text-sm">Thao tác</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -86,43 +87,47 @@ const ProductTable = ({
                 <td className="px-3 py-2 text-right font-semibold text-[#1E3A8A] text-sm">
                   {product.salePrice?.toLocaleString()} đ
                 </td>
-                <td className="px-3 py-2 text-center">
-                  <div
-                    className="inline-flex"
-                    title={product.status ? "Click để tắt" : "Click để kích hoạt"}
-                  >
-                    <Switch
-                      onChange={() => handleToggleStatus(product.id)}
-                      checked={product.status}
-                      offColor="#E5E7EB"
-                      onColor="#1E3A8A"
-                      offHandleColor="#9CA3AF"
-                      onHandleColor="#FFFFFF"
-                      checkedIcon={false}
-                      uncheckedIcon={false}
-                      height={24}
-                      width={48}
-                    />
-                  </div>
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex items-center justify-center space-x-2">
-                    <button
-                      className="p-2 text-[#1E3A8A] hover:bg-blue-100 rounded-lg transition-all duration-200"
-                      onClick={() => handleUpdateProduct(product)}
-                      title="Chỉnh sửa sản phẩm"
+                {isAdmin && (
+                  <td className="px-3 py-2 text-center">
+                    <div
+                      className="inline-flex"
+                      title={product.status ? "Click để tắt" : "Click để kích hoạt"}
                     >
-                      <AiOutlineEdit className="text-lg" />
-                    </button>
-                    <button
-                      className="p-2 text-red-500 hover:bg-red-100 rounded-lg transition-all duration-200"
-                      onClick={() => openDeleteModal(product)}
-                      title="Xóa sản phẩm"
-                    >
-                      <AiOutlineDelete className="text-lg" />
-                    </button>
-                  </div>
-                </td>
+                      <Switch
+                        onChange={() => handleToggleStatus(product.id)}
+                        checked={product.status}
+                        offColor="#E5E7EB"
+                        onColor="#1E3A8A"
+                        offHandleColor="#9CA3AF"
+                        onHandleColor="#FFFFFF"
+                        checkedIcon={false}
+                        uncheckedIcon={false}
+                        height={24}
+                        width={48}
+                      />
+                    </div>
+                  </td>
+                )}
+                {isAdmin && (
+                  <td className="px-3 py-2">
+                    <div className="flex items-center justify-center space-x-2">
+                      <button
+                        className="p-2 text-[#1E3A8A] hover:bg-blue-100 rounded-lg transition-all duration-200"
+                        onClick={() => handleUpdateProduct(product)}
+                        title="Chỉnh sửa sản phẩm"
+                      >
+                        <AiOutlineEdit className="text-lg" />
+                      </button>
+                      <button
+                        className="p-2 text-red-500 hover:bg-red-100 rounded-lg transition-all duration-200"
+                        onClick={() => openDeleteModal(product)}
+                        title="Xóa sản phẩm"
+                      >
+                        <AiOutlineDelete className="text-lg" />
+                      </button>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

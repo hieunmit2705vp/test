@@ -6,9 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -17,82 +15,94 @@ public class StatisticService {
     @Autowired
     private StatisticRepository statisticRepository;
 
-    // Doanh thu theo ngày
-    public List<DailyRevenueResponse> getDailyRevenue() {
-        List<Object[]> rawData = statisticRepository.getDailyRevenue();
-        List<DailyRevenueResponse> result = new ArrayList<>();
+    // Helper methods for safe casting
+    private Integer safeInt(Object o, Integer defaultValue) {
+        if (o == null) return defaultValue;
+        if (o instanceof Number) return ((Number) o).intValue();
+        try {
+            // Xử lý trường hợp chuỗi có thể là số thập phân (BigDecimal.toString())
+            return new BigDecimal(o.toString()).intValue();
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
 
+    private String safeString(Object o, String defaultValue) {
+        return (o != null) ? o.toString() : defaultValue;
+    }
+
+    private BigDecimal safeBigDecimal(Object o) {
+        if (o == null) return BigDecimal.ZERO;
+        if (o instanceof BigDecimal) return (BigDecimal) o;
+        try {
+            return new BigDecimal(o.toString());
+        } catch (Exception e) {
+            return BigDecimal.ZERO;
+        }
+    }
+
+    // Thống kê gộp (Doanh thu & Lợi nhuận)
+    public List<UnifiedStatisticResponse> getDailyStats(String startDate, String endDate) {
+        return convertToUnifiedResponse(statisticRepository.getDailyStats(startDate, endDate));
+    }
+
+    public List<UnifiedStatisticResponse> getWeeklyStats(String startDate, String endDate) {
+        return convertToUnifiedResponse(statisticRepository.getWeeklyStats(startDate, endDate));
+    }
+
+    public List<UnifiedStatisticResponse> getMonthlyStats(String startDate, String endDate) {
+        return convertToUnifiedResponse(statisticRepository.getMonthlyStats(startDate, endDate));
+    }
+
+    public List<UnifiedStatisticResponse> getYearlyStats(String startDate, String endDate) {
+        return convertToUnifiedResponse(statisticRepository.getYearlyStats(startDate, endDate));
+    }
+
+    private List<UnifiedStatisticResponse> convertToUnifiedResponse(List<Object[]> rawData) {
+        List<UnifiedStatisticResponse> result = new ArrayList<>();
+        if (rawData == null) return result;
+        
         for (Object[] record : rawData) {
-            DailyRevenueResponse dto = new DailyRevenueResponse();
-            dto.setDayNumber((Integer) record[0]);
-            dto.setMonthNumber((Integer) record[1]);
-            dto.setYearNumber((Integer) record[2]);
-            dto.setDailyRevenue((BigDecimal) record[3]);
+            UnifiedStatisticResponse dto = new UnifiedStatisticResponse();
+            dto.setLabel(record[0] != null ? record[0].toString() : "");
+            
+            // Ép kiểu an toàn cho Revenue (đề phòng database trả về Double/Long/BigDecimal)
+            if (record[1] instanceof BigDecimal) {
+                dto.setRevenue((BigDecimal) record[1]);
+            } else if (record[1] instanceof Number) {
+                dto.setRevenue(new BigDecimal(record[1].toString()));
+            } else {
+                dto.setRevenue(BigDecimal.ZERO);
+            }
+
+            // Ép kiểu an toàn cho Profit
+            if (record[2] instanceof BigDecimal) {
+                dto.setProfit((BigDecimal) record[2]);
+            } else if (record[2] instanceof Number) {
+                dto.setProfit(new BigDecimal(record[2].toString()));
+            } else {
+                dto.setProfit(BigDecimal.ZERO);
+            }
+            
             result.add(dto);
         }
-
         return result;
     }
 
-    // Doanh thu theo tuần
-    public List<WeeklyRevenueResponse> getWeeklyRevenue() {
-        List<Object[]> rawData = statisticRepository.getWeeklyRevenue();
-        List<WeeklyRevenueResponse> result = new ArrayList<>();
-
-        for (Object[] record : rawData) {
-            WeeklyRevenueResponse dto = new WeeklyRevenueResponse();
-            dto.setWeekNumber((Integer) record[0]);
-            dto.setYearNumber((Integer) record[1]);
-            dto.setWeeklyRevenue((BigDecimal) record[2]);
-            result.add(dto);
-        }
-
-        return result;
-    }
-
-    // Doanh thu theo tháng
-    public List<MonthlyRevenueResponse> getMonthlyRevenue() {
-        List<Object[]> rawData = statisticRepository.getMonthlyRevenue();
-        List<MonthlyRevenueResponse> result = new ArrayList<>();
-
-        for (Object[] record : rawData) {
-            MonthlyRevenueResponse dto = new MonthlyRevenueResponse();
-            dto.setMonthNumber((Integer) record[0]);
-            dto.setYearNumber((Integer) record[1]);
-            dto.setMonthlyRevenue((BigDecimal) record[2]);
-            result.add(dto);
-        }
-
-        return result;
-    }
-
-    // Doanh thu theo năm
-    public List<YearlyRevenueResponse> getYearlyRevenue() {
-        List<Object[]> rawData = statisticRepository.getYearlyRevenue();
-        List<YearlyRevenueResponse> result = new ArrayList<>();
-
-        for (Object[] record : rawData) {
-            YearlyRevenueResponse dto = new YearlyRevenueResponse();
-            dto.setYearNumber((Integer) record[0]);
-            dto.setYearlyRevenue((BigDecimal) record[1]);
-            result.add(dto);
-        }
-
-        return result;
-    }
 
     // doanh thu theo kênh:
-    public List<ChannelRevenueResponse> getChannelRevenue() {
-        List<Object[]> rawData = statisticRepository.getChannelRevenue();
+    public List<ChannelRevenueResponse> getChannelRevenue(String startDate, String endDate) {
+        List<Object[]> rawData = statisticRepository.getChannelRevenue(startDate, endDate);
         List<ChannelRevenueResponse> result = new ArrayList<>();
+        if (rawData == null) return result;
 
         for (Object[] record : rawData) {
             ChannelRevenueResponse dto = new ChannelRevenueResponse();
-            dto.setDayNumber((Integer) record[0]);
-            dto.setMonthNumber((Integer) record[1]);
-            dto.setYearNumber((Integer) record[2]);
-            dto.setOnlineRevenue((BigDecimal) record[3]);
-            dto.setInStoreRevenue((BigDecimal) record[4]);
+            dto.setDayNumber(safeInt(record[0], 0));
+            dto.setMonthNumber(safeInt(record[1], 0));
+            dto.setYearNumber(safeInt(record[2], 0));
+            dto.setOnlineRevenue(safeBigDecimal(record[3]));
+            dto.setInStoreRevenue(safeBigDecimal(record[4]));
             result.add(dto);
         }
 
@@ -100,9 +110,9 @@ public class StatisticService {
     }
 
     // Tỷ Lệ Đơn Hàng Theo Trạng Thái
-    public List<OrderStatusDistributionResponse> getOrderStatusDistribution() {
+    public List<OrderStatusDistributionResponse> getOrderStatusDistribution(String startDate, String endDate) {
         try {
-            List<Object[]> rawData = statisticRepository.getOrderStatusDistribution();
+            List<Object[]> rawData = statisticRepository.getOrderStatusDistribution(startDate, endDate);
             List<OrderStatusDistributionResponse> result = new ArrayList<>();
 
             // Kiểm tra nếu rawData là null hoặc rỗng
@@ -112,27 +122,12 @@ public class StatisticService {
 
             for (Object[] record : rawData) {
                 OrderStatusDistributionResponse dto = new OrderStatusDistributionResponse();
-
                 try {
-                    // Ánh xạ statusOrder
-                    dto.setStatusOrder(record[0] != null ? (Integer) record[0] : -2); // -2 là giá trị mặc định nếu null
-                    // Ánh xạ statusName
-                    dto.setStatusName(record[1] != null ? (String) record[1] : "Không xác định");
-                    // Ánh xạ orderCount
-                    if (record[2] instanceof BigInteger) {
-                        dto.setOrderCount(((BigInteger) record[2]).intValue());
-                    } else if (record[2] instanceof Long) {
-                        dto.setOrderCount(((Long) record[2]).intValue());
-                    } else if (record[2] instanceof Integer) {
-                        dto.setOrderCount((Integer) record[2]);
-                    } else {
-                        dto.setOrderCount(0); // Giá trị mặc định nếu kiểu không xác định
-                        System.err.println("Kiểu dữ liệu không mong đợi cho orderCount: " + (record[2] != null ? record[2].getClass().getName() : "null"));
-                    }
+                    dto.setStatusOrder(safeInt(record[0], -2));
+                    dto.setStatusName(safeString(record[1], "Không xác định"));
+                    dto.setOrderCount(safeInt(record[2], 0));
                     result.add(dto);
-                } catch (ClassCastException e) {
-                    // Ghi log lỗi ánh xạ
-//                    System.err.println("Lỗi ánh xạ dữ liệu cho record: " + Arrays.toString(record));
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -147,9 +142,9 @@ public class StatisticService {
     }
 
     // Tỷ Lệ Thanh Toán Theo Phương Thức
-    public List<PaymentMethodDistributionResponse> getPaymentMethodDistribution() {
+    public List<PaymentMethodDistributionResponse> getPaymentMethodDistribution(String startDate, String endDate) {
         try {
-            List<Object[]> rawData = statisticRepository.getPaymentMethodDistribution();
+            List<Object[]> rawData = statisticRepository.getPaymentMethodDistribution(startDate, endDate);
             List<PaymentMethodDistributionResponse> result = new ArrayList<>();
 
             // Kiểm tra nếu rawData là null hoặc rỗng
@@ -160,24 +155,11 @@ public class StatisticService {
             for (Object[] record : rawData) {
                 PaymentMethodDistributionResponse dto = new PaymentMethodDistributionResponse();
                 try {
-                    // Ánh xạ paymentMethod
-                    dto.setPaymentMethod(record[0] != null ? (Integer) record[0] : -1); // -1 là giá trị mặc định nếu null
-                    // Ánh xạ methodName
-                    dto.setMethodName(record[1] != null ? (String) record[1] : "Không xác định");
-                    // Ánh xạ orderCount (xử lý cả Integer và Long)
-                    if (record[2] instanceof BigInteger) {
-                        dto.setOrderCount(((BigInteger) record[2]).intValue());
-                    } else if (record[2] instanceof Long) {
-                        dto.setOrderCount(((Long) record[2]).intValue());
-                    } else if (record[2] instanceof Integer) {
-                        dto.setOrderCount((Integer) record[2]);
-                    } else {
-                        dto.setOrderCount(0); // Giá trị mặc định nếu kiểu không xác định
-                        System.err.println("Kiểu dữ liệu không mong đợi cho orderCount: " + (record[2] != null ? record[2].getClass().getName() : "null"));
-                    }
+                    dto.setPaymentMethod(safeInt(record[0], -1));
+                    dto.setMethodName(safeString(record[1], "Không xác định"));
+                    dto.setOrderCount(safeInt(record[2], 0));
                     result.add(dto);
                 } catch (Exception e) {
-//                    System.err.println("Lỗi ánh xạ dữ liệu cho record: " + Arrays.toString(record));
                     e.printStackTrace();
                 }
             }
@@ -191,9 +173,9 @@ public class StatisticService {
     }
 
     // Top 5 Khách Hàng Mua Nhiều Nhất
-    public List<TopCustomerResponse> getTop5Customers() {
+    public List<TopCustomerResponse> getTop5Customers(String startDate, String endDate) {
         try {
-            List<Object[]> rawData = statisticRepository.getTop5Customers();
+            List<Object[]> rawData = statisticRepository.getTop5Customers(startDate, endDate);
             List<TopCustomerResponse> result = new ArrayList<>();
 
             // Kiểm tra nếu rawData là null hoặc rỗng
@@ -204,24 +186,11 @@ public class StatisticService {
             for (Object[] record : rawData) {
                 TopCustomerResponse dto = new TopCustomerResponse();
                 try {
-                    // Ánh xạ customerName
-                    dto.setCustomerName(record[0] != null ? (String) record[0] : "Khách hàng không xác định");
-                    // Ánh xạ totalOrders (xử lý cả Integer và Long)
-                    if (record[1] instanceof BigInteger) {
-                        dto.setTotalOrders(((BigInteger) record[1]).intValue());
-                    } else if (record[1] instanceof Long) {
-                        dto.setTotalOrders(((Long) record[1]).intValue());
-                    } else if (record[1] instanceof Integer) {
-                        dto.setTotalOrders((Integer) record[1]);
-                    } else {
-                        dto.setTotalOrders(0); // Giá trị mặc định nếu kiểu không xác định
-                        System.err.println("Kiểu dữ liệu không mong đợi cho totalOrders: " + (record[1] != null ? record[1].getClass().getName() : "null"));
-                    }
-                    // Ánh xạ totalSpent
-                    dto.setTotalSpent(record[2] != null ? (BigDecimal) record[2] : BigDecimal.ZERO);
+                    dto.setCustomerName(safeString(record[0], "Khách hàng không xác định"));
+                    dto.setTotalOrders(safeInt(record[1], 0));
+                    dto.setTotalSpent(safeBigDecimal(record[2]));
                     result.add(dto);
                 } catch (Exception e) {
-//                    System.err.println("Lỗi ánh xạ dữ liệu cho record: " + Arrays.toString(record));
                     e.printStackTrace();
                 }
             }
@@ -252,7 +221,28 @@ public class StatisticService {
 
     // Lấy top 5 sản phẩm bán chạy nhất trong khoảng thời gian:
     public List<ProductDetailDTO> getTop5BestSellingProductDetailInAPeriodOfTime(String startDate, String endDate) {
-        return statisticRepository.getTop5BestSellingProductDetailInAPeriodOfTime(startDate, endDate);
+        List<Object[]> rawData = statisticRepository.getTop5BestSellingProductDetailInAPeriodOfTime(startDate, endDate);
+        List<ProductDetailDTO> result = new ArrayList<>();
+        for (Object[] record : rawData) {
+            ProductDetailDTO dto = new ProductDetailDTO();
+            dto.setProductDetailName(record[0] != null ? (String) record[0] : "Không xác định");
+            
+            // Ép kiểu an toàn cho Quantity
+            if (record[1] instanceof Number) {
+                dto.setTotalQuantitySold(((Number) record[1]).intValue());
+            } else {
+                dto.setTotalQuantitySold(0);
+            }
+            
+            // Ép kiểu cho Revenue
+            dto.setTotalRevenue(record[2] != null ? (BigDecimal) record[2] : BigDecimal.ZERO);
+            
+            // Ép kiểu cho Profit
+            dto.setTotalProfit(record[3] != null ? (BigDecimal) record[3] : BigDecimal.ZERO);
+            
+            result.add(dto);
+        }
+        return result;
     }
 
     // Lấy tổng doanh thu
@@ -279,5 +269,40 @@ public class StatisticService {
     public Integer getNumberOfStaff() {
         return statisticRepository.getNumberOfStaff();
     }
+
+    // Tổng lợi nhuận
+    public BigDecimal getTotalProfit() {
+        return statisticRepository.getTotalProfit();
+    }
+
+    // Lấy thống kê theo khoảng thời gian (Doanh thu, Lợi nhuận, Số đơn hàng)
+    public PeriodStatisticResponse getPeriodStatistics(String startDate, String endDate) {
+        BigDecimal revenue = statisticRepository.getRevenueInPeriod(startDate, endDate);
+        BigDecimal profit = statisticRepository.getProfitInPeriod(startDate, endDate);
+        Long orderCount = statisticRepository.getOrderCountInPeriod(startDate, endDate);
+        Long inStoreOrderCount = statisticRepository.getInStoreOrderCountInPeriod(startDate, endDate);
+        Long onlineOrderCount = statisticRepository.getOnlineOrderCountInPeriod(startDate, endDate);
+
+        return PeriodStatisticResponse.builder()
+                .revenue(revenue)
+                .profit(profit)
+                .orderCount(orderCount)
+                .inStoreOrderCount(inStoreOrderCount)
+                .onlineOrderCount(onlineOrderCount)
+                .build();
+    }
+
+    // Lợi nhuận theo ngày (Deprecated)
+    @Deprecated
+    public List<Object[]> getDailyProfit() { return new ArrayList<>(); }
+
+    @Deprecated
+    public List<Object[]> getMonthlyProfit() { return new ArrayList<>(); }
+
+    @Deprecated
+    public List<Object[]> getWeeklyProfit() { return new ArrayList<>(); }
+
+    @Deprecated
+    public List<Object[]> getYearlyProfit() { return new ArrayList<>(); }
 
 }

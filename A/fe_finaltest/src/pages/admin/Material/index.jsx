@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useSelector } from "react-redux";
 import { AiOutlineEdit, AiOutlinePlus, AiOutlineSearch } from "react-icons/ai";
 import Switch from "react-switch";
 import MaterialService from "../../../services/MaterialService";
@@ -7,6 +8,8 @@ import UpdateModal from "./components/UpdateModal";
 import CreateModal from "./components/CreateModal";
 
 export default function Material() {
+    const { role } = useSelector((state) => state.user);
+    const isAdmin = role === "ADMIN";
     const [materials, setMaterials] = useState([]);
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -22,15 +25,15 @@ export default function Material() {
 
     const fetchMaterials = useCallback(async () => {
         try {
-            const { content, totalPages } = await MaterialService.getAllMaterials(
+            const response = await MaterialService.getAllMaterials(
                 search,
                 currentPage,
                 pageSize,
                 sortConfig.key,
                 sortConfig.direction
             );
-            setMaterials(content);
-            setTotalPages(totalPages);
+            setMaterials(response.content || []);
+            setTotalPages(response.page?.totalPages || 0);
         } catch (error) {
             console.error("Error fetching materials:", error);
             toast.error("Lỗi khi tải danh sách chất liệu");
@@ -100,13 +103,15 @@ export default function Material() {
                             onChange={handleSearch}
                         />
                     </div>
-                    <button
-                        className="bg-[#1E3A8A] text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:bg-[#163172] transition-all duration-300 flex items-center gap-2 transform hover:scale-105"
-                        onClick={() => setCreateModal(true)}
-                    >
-                        <AiOutlinePlus className="text-xl" />
-                        Thêm Mới
-                    </button>
+                    {isAdmin && (
+                        <button
+                            className="bg-[#1E3A8A] text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:bg-[#163172] transition-all duration-300 flex items-center gap-2 transform hover:scale-105"
+                            onClick={() => setCreateModal(true)}
+                        >
+                            <AiOutlinePlus className="text-xl" />
+                            Thêm Mới
+                        </button>
+                    )}
                 </div>
 
                 {/* Table */}
@@ -171,6 +176,7 @@ export default function Material() {
                                             </span>
                                         </td>
                                         <td className="py-4 px-6 text-center">
+                                        {isAdmin && (
                                             <div className="flex items-center justify-center gap-4">
                                                 <button
                                                     className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-800 flex items-center justify-center transition-all duration-200 shadow-sm border border-blue-200"
@@ -194,6 +200,7 @@ export default function Material() {
                                                     checkedIcon={false}
                                                 />
                                             </div>
+                                        )}
                                         </td>
                                     </tr>
                                 ))}

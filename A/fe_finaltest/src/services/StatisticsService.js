@@ -3,60 +3,69 @@ import api from "../ultils/api"; // Import instance Axios đã cấu hình
 const API_BASE_URL = "/api/statistics"; // Đường dẫn tương đối vì baseURL đã được cấu hình trong api.js
 
 const StatisticsService = {
-    // Lấy doanh thu ngày
-    getDailyRevenue: async () => {
+    // Thống kê gộp Doanh thu & Lợi nhuận
+    getDailyStats: async (startDate, endDate) => {
         try {
-            const response = await api.get(`${API_BASE_URL}/daily-revenue`);
-            console.log("✅ Doanh thu ngày:", response.data.data);
-            return response.data.data; // Trả về dữ liệu doanh thu ngày
+            const response = await api.get(`${API_BASE_URL}/daily-stats`, {
+                params: { startDate, endDate }
+            });
+            return response.data.data;
         } catch (error) {
-            console.error("❌ Lỗi khi lấy doanh thu ngày:", error.response?.data || error.message);
+            console.error("❌ Lỗi khi lấy thống kê ngày:", error.response?.data || error.message);
             throw error;
         }
     },
 
-    // Lấy doanh thu tuần
-    getWeeklyRevenue: async () => {
+    getWeeklyStats: async (startDate, endDate) => {
         try {
-            const response = await api.get(`${API_BASE_URL}/weekly-revenue`);
-            console.log("✅ Doanh thu tuần:", response.data.data);
-            return response.data.data; // Trả về dữ liệu doanh thu tuần
+            const response = await api.get(`${API_BASE_URL}/weekly-stats`, {
+                params: { startDate, endDate }
+            });
+            return response.data.data;
         } catch (error) {
-            console.error("❌ Lỗi khi lấy doanh thu tuần:", error.response?.data || error.message);
+            console.error("❌ Lỗi khi lấy thống kê tuần:", error.response?.data || error.message);
             throw error;
         }
     },
 
-    // Lấy doanh thu tháng
-    getMonthlyRevenue: async () => {
+    getMonthlyStats: async (startDate, endDate) => {
         try {
-            const response = await api.get(`${API_BASE_URL}/monthly-revenue`);
-            console.log("✅ Doanh thu tháng:", response.data.data);
-            return response.data.data; // Trả về dữ liệu doanh thu tháng
+            const response = await api.get(`${API_BASE_URL}/monthly-stats`, {
+                params: { startDate, endDate }
+            });
+            return response.data.data;
         } catch (error) {
-            console.error("❌ Lỗi khi lấy doanh thu tháng:", error.response?.data || error.message);
+            console.error("❌ Lỗi khi lấy thống kê tháng:", error.response?.data || error.message);
             throw error;
         }
     },
 
-    // Lấy doanh thu năm
-    getYearlyRevenue: async () => {
+    getYearlyStats: async (startDate, endDate) => {
         try {
-            const response = await api.get(`${API_BASE_URL}/yearly-revenue`);
-            console.log("✅ Doanh thu năm:", response.data.data);
-            return response.data.data; // Trả về dữ liệu doanh thu năm
+            const response = await api.get(`${API_BASE_URL}/yearly-stats`, {
+                params: { startDate, endDate }
+            });
+            return response.data.data;
         } catch (error) {
-            console.error("❌ Lỗi khi lấy doanh thu năm:", error.response?.data || error.message);
+            console.error("❌ Lỗi khi lấy thống kê năm:", error.response?.data || error.message);
             throw error;
         }
     },
+
+    // Các phương thức cũ (Đã thay thế bằng Stats)
+    getDailyRevenue: async () => [],
+    getWeeklyRevenue: async () => [],
+    getMonthlyRevenue: async () => [],
+    getYearlyRevenue: async () => [],
 
     // Lấy doanh thu theo kênh (online vs tại quầy)
-    getChannelRevenue: async () => {
+    getChannelRevenue: async (startDate, endDate) => {
         try {
-            const response = await api.get(`${API_BASE_URL}/channel-revenue`);
+            const response = await api.get(`${API_BASE_URL}/channel-revenue`, {
+                params: { startDate, endDate }
+            });
             console.log("✅ Doanh thu theo kênh:", response.data.data);
-            return response.data.data; // Trả về dữ liệu doanh thu theo kênh
+            return response.data.data;
         } catch (error) {
             console.error("❌ Lỗi khi lấy doanh thu theo kênh:", error.response?.data || error.message);
             throw error;
@@ -64,11 +73,13 @@ const StatisticsService = {
     },
 
     // Lấy tỷ lệ đơn hàng theo trạng thái
-    getOrderStatusDistribution: async () => {
+    getOrderStatusDistribution: async (startDate, endDate) => {
         try {
-            const response = await api.get(`${API_BASE_URL}/order-status-distribution`);
+            const response = await api.get(`${API_BASE_URL}/order-status-distribution`, {
+                params: { startDate, endDate }
+            });
             console.log("✅ Tỷ lệ đơn hàng theo trạng thái:", response.data.data);
-            return response.data.data; // Trả về dữ liệu tỷ lệ đơn hàng
+            return response.data.data;
         } catch (error) {
             console.error("❌ Lỗi khi lấy tỷ lệ đơn hàng theo trạng thái:", error.response?.data || error.message);
             throw error;
@@ -76,11 +87,13 @@ const StatisticsService = {
     },
 
     // Lấy tỷ lệ thanh toán theo phương thức
-    getPaymentMethodDistribution: async () => {
+    getPaymentMethodDistribution: async (startDate, endDate) => {
         try {
-            const response = await api.get(`${API_BASE_URL}/payment-method-distribution`);
+            const response = await api.get(`${API_BASE_URL}/payment-method-distribution`, {
+                params: { startDate, endDate }
+            });
             console.log("✅ Tỷ lệ thanh toán theo phương thức:", response.data.data);
-            return response.data.data; // Trả về dữ liệu tỷ lệ thanh toán
+            return response.data.data;
         } catch (error) {
             console.error("❌ Lỗi khi lấy tỷ lệ thanh toán theo phương thức:", error.response?.data || error.message);
             throw error;
@@ -88,11 +101,13 @@ const StatisticsService = {
     },
 
     // Lấy top 5 khách hàng mua nhiều nhất
-    getTop5Customers: async () => {
+    getTop5Customers: async (startDate, endDate) => {
         try {
-            const response = await api.get(`${API_BASE_URL}/top-5-customers`);
+            const response = await api.get(`${API_BASE_URL}/top-5-customers`, {
+                params: { startDate, endDate }
+            });
             console.log("✅ Top 5 khách hàng:", response.data.data);
-            return response.data.data; // Trả về dữ liệu top 5 khách hàng
+            return response.data.data;
         } catch (error) {
             console.error("❌ Lỗi khi lấy top 5 khách hàng:", error.response?.data || error.message);
             throw error;
@@ -202,12 +217,43 @@ const StatisticsService = {
                 params: { startDate, endDate },
             });
             console.log("✅ Top sản phẩm bán chạy:", response.data.data);
-            return response.data.data; // Trả về dữ liệu top sản phẩm
+            return response.data.data;
         } catch (error) {
             console.error("❌ Lỗi khi lấy top sản phẩm bán chạy:", error.response?.data || error.message);
             throw error;
         }
     },
+
+    // Tổng lợi nhuận
+    getTotalProfit: async () => {
+        try {
+            const response = await api.get(`${API_BASE_URL}/total-profit`);
+            return response.data.data;
+        } catch (error) {
+            console.error("❌ Lỗi khi lấy tổng lợi nhuận:", error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    // Lấy thống kê theo khoảng thời gian (Doanh thu, Lợi nhuận, Số đơn hàng)
+    getPeriodStatistics: async (startDate, endDate) => {
+        try {
+            const response = await api.get(`${API_BASE_URL}/period-stats`, {
+                params: { startDate, endDate },
+            });
+            console.log("✅ Thống kê theo khoảng thời gian:", response.data.data);
+            return response.data.data;
+        } catch (error) {
+            console.error("❌ Lỗi khi lấy thống kê theo khoảng thời gian:", error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    // Lấy lợi nhuận cũ (Đã thay thế bằng Stats)
+    getDailyProfit: async () => [],
+    getMonthlyProfit: async () => [],
+    getWeeklyProfit: async () => [],
+    getYearlyProfit: async () => [],
 };
 
 export default StatisticsService;

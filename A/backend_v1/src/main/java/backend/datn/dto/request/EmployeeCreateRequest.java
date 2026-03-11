@@ -39,7 +39,6 @@ public class EmployeeCreateRequest {
     @Size(max = 255, message = "Địa chỉ không được vượt quá 255 ký tự")
     String address;
 
-    @Size(max = 255, message = "URL ảnh không được vượt quá 255 ký tự")
     String photo;
 
     @NotNull(message = "Giới tính không được để trống")

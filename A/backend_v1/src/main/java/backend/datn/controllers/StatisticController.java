@@ -21,58 +21,54 @@ public class StatisticController {
     @Autowired
     private StatisticService statisticService;
 
-    @GetMapping("/daily-revenue")
-    public ResponseEntity<ApiResponse> getDailyRevenue() {
+    @GetMapping("/daily-stats")
+    public ResponseEntity<ApiResponse> getDailyStats(@RequestParam String startDate, @RequestParam String endDate) {
         try {
-            List<DailyRevenueResponse> data = statisticService.getDailyRevenue();
-            ApiResponse response = new ApiResponse("success", "Truy vấn doanh thu hàng ngày thành công", data);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            List<UnifiedStatisticResponse> data = statisticService.getDailyStats(startDate, endDate);
+            return ResponseEntity.ok(new ApiResponse("success", "Truy vấn thống kê hàng ngày thành công", data));
         } catch (Exception e) {
-            ApiResponse response = new ApiResponse("error", "Truy vấn doanh thu hàng ngày thất bại", null);
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse("error", "Lỗi: " + e.getMessage(), null));
         }
     }
 
-    @GetMapping("/weekly-revenue")
-    public ResponseEntity<ApiResponse> getWeeklyRevenue() {
+    @GetMapping("/weekly-stats")
+    public ResponseEntity<ApiResponse> getWeeklyStats(@RequestParam String startDate, @RequestParam String endDate) {
         try {
-            List<WeeklyRevenueResponse> data = statisticService.getWeeklyRevenue();
-            ApiResponse response = new ApiResponse("success", "Truy vấn doanh thu hàng tuần thành công", data);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            List<UnifiedStatisticResponse> data = statisticService.getWeeklyStats(startDate, endDate);
+            return ResponseEntity.ok(new ApiResponse("success", "Truy vấn thống kê hàng tuần thành công", data));
         } catch (Exception e) {
-            ApiResponse response = new ApiResponse("error", "Truy vấn doanh thu hàng tuần thất bại", null);
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse("error", "Lỗi: " + e.getMessage(), null));
         }
     }
 
-    @GetMapping("/monthly-revenue")
-    public ResponseEntity<ApiResponse> getMonthlyRevenue() {
+    @GetMapping("/monthly-stats")
+    public ResponseEntity<ApiResponse> getMonthlyStats(@RequestParam String startDate, @RequestParam String endDate) {
         try {
-            List<MonthlyRevenueResponse> data = statisticService.getMonthlyRevenue();
-            ApiResponse response = new ApiResponse("success", "Truy vấn doanh thu hàng tháng thành công", data);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            List<UnifiedStatisticResponse> data = statisticService.getMonthlyStats(startDate, endDate);
+            return ResponseEntity.ok(new ApiResponse("success", "Truy vấn thống kê hàng tháng thành công", data));
         } catch (Exception e) {
-            ApiResponse response = new ApiResponse("error", "Truy vấn doanh thu hàng tháng thất bại", null);
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse("error", "Lỗi: " + e.getMessage(), null));
         }
     }
 
-    @GetMapping("/yearly-revenue")
-    public ResponseEntity<ApiResponse> getYearlyRevenue() {
+    @GetMapping("/yearly-stats")
+    public ResponseEntity<ApiResponse> getYearlyStats(@RequestParam String startDate, @RequestParam String endDate) {
         try {
-            List<YearlyRevenueResponse> data = statisticService.getYearlyRevenue();
-            ApiResponse response = new ApiResponse("success", "Truy vấn doanh thu hàng năm thành công", data);
-            return new ResponseEntity<>(response, HttpStatus.OK);
+            List<UnifiedStatisticResponse> data = statisticService.getYearlyStats(startDate, endDate);
+            return ResponseEntity.ok(new ApiResponse("success", "Truy vấn thống kê hàng năm thành công", data));
         } catch (Exception e) {
-            ApiResponse response = new ApiResponse("error", "Truy vấn doanh thu hàng năm thất bại", null);
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse("error", "Lỗi: " + e.getMessage(), null));
         }
     }
 
     @GetMapping("/channel-revenue")
-    public ResponseEntity<ApiResponse> getChannelRevenue() {
+    public ResponseEntity<ApiResponse> getChannelRevenue(@RequestParam String startDate, @RequestParam String endDate) {
         try {
-            List<ChannelRevenueResponse> data = statisticService.getChannelRevenue();
+            List<ChannelRevenueResponse> data = statisticService.getChannelRevenue(startDate, endDate);
             ApiResponse response = new ApiResponse("success", "Truy vấn doanh thu theo kênh thành công", data);
             return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
@@ -82,9 +78,9 @@ public class StatisticController {
     }
 
     @GetMapping("/order-status-distribution")
-    public ResponseEntity<ApiResponse> getOrderStatusDistribution() {
+    public ResponseEntity<ApiResponse> getOrderStatusDistribution(@RequestParam String startDate, @RequestParam String endDate) {
         try {
-            List<OrderStatusDistributionResponse> data = statisticService.getOrderStatusDistribution();
+            List<OrderStatusDistributionResponse> data = statisticService.getOrderStatusDistribution(startDate, endDate);
             if (data.isEmpty()) {
                 ApiResponse response = new ApiResponse("success", "Không có dữ liệu về tỷ lệ đơn hàng theo trạng thái", data);
                 return new ResponseEntity<>(response, HttpStatus.OK);
@@ -101,9 +97,9 @@ public class StatisticController {
     }
 
     @GetMapping("/payment-method-distribution")
-    public ResponseEntity<ApiResponse> getPaymentMethodDistribution() {
+    public ResponseEntity<ApiResponse> getPaymentMethodDistribution(@RequestParam String startDate, @RequestParam String endDate) {
         try {
-            List<PaymentMethodDistributionResponse> data = statisticService.getPaymentMethodDistribution();
+            List<PaymentMethodDistributionResponse> data = statisticService.getPaymentMethodDistribution(startDate, endDate);
             if (data.isEmpty()) {
                 ApiResponse response = new ApiResponse("success", "Không có dữ liệu về tỷ lệ thanh toán theo phương thức", data);
                 return new ResponseEntity<>(response, HttpStatus.OK);
@@ -119,9 +115,9 @@ public class StatisticController {
     }
 
     @GetMapping("/top-5-customers")
-    public ResponseEntity<ApiResponse> getTop5Customers() {
+    public ResponseEntity<ApiResponse> getTop5Customers(@RequestParam String startDate, @RequestParam String endDate) {
         try {
-            List<TopCustomerResponse> data = statisticService.getTop5Customers();
+            List<TopCustomerResponse> data = statisticService.getTop5Customers(startDate, endDate);
             if (data.isEmpty()) {
                 ApiResponse response = new ApiResponse("success", "Không có dữ liệu về top 5 khách hàng mua nhiều nhất", data);
                 return new ResponseEntity<>(response, HttpStatus.OK);
@@ -157,6 +153,18 @@ public class StatisticController {
             return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
             ApiResponse response = new ApiResponse("error", "Truy vấn top 5 sản phẩm bán chạy nhất thất bại", null);
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/period-stats")
+    public ResponseEntity<ApiResponse> getPeriodStatistics(@RequestParam String startDate, @RequestParam String endDate) {
+        try {
+            PeriodStatisticResponse data = statisticService.getPeriodStatistics(startDate, endDate);
+            ApiResponse response = new ApiResponse("success", "Truy vấn thống kê theo khoảng thời gian thành công", data);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            ApiResponse response = new ApiResponse("error", "Truy vấn thống kê theo khoảng thời gian thất bại", null);
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -220,5 +228,18 @@ public class StatisticController {
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @GetMapping("/total-profit")
+    public ResponseEntity<ApiResponse> getTotalProfit() {
+        try {
+            java.math.BigDecimal data = statisticService.getTotalProfit();
+            ApiResponse response = new ApiResponse("success", "Truy vấn tổng lợi nhuận thành công", data);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            ApiResponse response = new ApiResponse("error", "Truy vấn tổng lợi nhuận thất bại", null);
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
 
 }

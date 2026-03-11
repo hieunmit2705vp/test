@@ -7,23 +7,26 @@ import { toast } from "react-toastify";
 const orderStatusMap = {
   "-1": "Đã hủy",
   0: "Chờ xác nhận",
+  1: "Chờ thanh toán",
   2: "Đã xác nhận",
   3: "Đang giao hàng",
+  4: "Giao hàng thất bại",
   5: "Hoàn thành",
 };
 
 // Tạo lớp CSS cho từng trạng thái
 const getStatusClass = (status) => {
   const baseClasses = "px-3 py-1 rounded-full text-xs font-medium";
-  return status === -1
-    ? `${baseClasses} bg-red-100 text-red-800`
-    : status === 0
-      ? `${baseClasses} bg-yellow-100 text-yellow-800`
-      : status === 2
-        ? `${baseClasses} bg-green-100 text-green-800`
-        : status === 3
-          ? `${baseClasses} bg-orange-100 text-orange-800`
-          : `${baseClasses} bg-teal-100 text-teal-800`;
+  switch (Number(status)) {
+    case -1: return `${baseClasses} bg-red-100 text-red-800`;
+    case 0: return `${baseClasses} bg-yellow-100 text-yellow-800`;
+    case 1: return `${baseClasses} bg-blue-100 text-blue-800`;
+    case 2: return `${baseClasses} bg-green-100 text-green-800`;
+    case 3: return `${baseClasses} bg-indigo-100 text-indigo-800`;
+    case 4: return `${baseClasses} bg-orange-100 text-orange-800`;
+    case 5: return `${baseClasses} bg-emerald-100 text-emerald-800`;
+    default: return `${baseClasses} bg-gray-100 text-gray-800`;
+  }
 };
 
 // Component Timeline
@@ -235,7 +238,7 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
       console.error("Lỗi khi cập nhật trạng thái:", error);
       toast.error(
         error.response?.data?.message ||
-          "Lỗi khi cập nhật trạng thái. Vui lòng thử lại!"
+        "Lỗi khi cập nhật trạng thái. Vui lòng thử lại!"
       );
     }
   };
@@ -294,13 +297,12 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
                     {statusIcons[status]}
                   </button>
                   <span
-                    className={`mt-2 text-sm font-medium ${
-                      nodeStatus === "current"
+                    className={`mt-2 text-sm font-medium ${nodeStatus === "current"
                         ? "text-blue-600"
                         : nodeStatus === "completed"
                           ? "text-green-600"
                           : "text-gray-600"
-                    }`}
+                      }`}
                   >
                     {orderStatusMap[status]}
                   </span>
@@ -474,98 +476,69 @@ const OrderDetail = () => {
     const style = document.createElement("style");
     style.innerHTML = `
     @media print {
-      body {
+      /* Hhide EVERYTHING by default for a clean slate */
+      body * {
+        visibility: hidden !important;
+      }
+
+      /* Only show the invoice container and its children */
+      .bg-white.rounded-lg.shadow-lg.overflow-hidden.max-w-4xl.mx-auto,
+      .bg-white.rounded-lg.shadow-lg.overflow-hidden.max-w-4xl.mx-auto * {
         visibility: visible !important;
-        background-color: white !important;
-        font-family: Arial, sans-serif !important;
-        color: #333 !important;
       }
 
-      /* Ẩn các phần có class no-print */
-      .no-print, .no-print * {
-      display: none !important;
-      visibility: hidden !important;
-    }
-
-      .container .bg-white.rounded-lg.shadow-lg {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        padding: 0;
-        margin: 0;
+      /* Position the invoice at the very top left */
+      .bg-white.rounded-lg.shadow-lg.overflow-hidden.max-w-4xl.mx-auto {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
         box-shadow: none !important;
-        border-radius: 0 !important;
+        border: none !important;
       }
 
+      /* Hide sidebar and header explicitly to be sure */
+      header, 
+      aside, 
+      nav,
+      .no-print {
+        display: none !important;
+      }
+
+      /* Reset body and parent containers */
+      body, html {
+        background-color: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        width: 100% !important;
+      }
+
+      /* Ensure tables look good */
       table {
         width: 100% !important;
         border-collapse: collapse !important;
-        page-break-inside: auto !important;
+      }
+      
+      table th, table td {
+        border: 1px solid #eee !important;
+        padding: 8px !important;
       }
 
-      table tr {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-      }
-
-      table td, table th {
-        border: 1px solid #ddd !important;
-        padding: 6px 8px !important;
-      }
-
-      table thead {
-        display: table-header-group !important;
-      }
-
-      table tfoot {
-        display: table-footer-group !important;
-      }
-
-      .bg-white.rounded-lg.shadow-lg:before {
-        content: "CỬA HÀNG The Boys" !important;
-        display: block;
-        text-align: center;
-        font-size: 24px;
-        font-weight: bold;
-        margin: 10px 0;
-        color: #4a90e2;
-      }
-
-      .bg-white.rounded-lg.shadow-lg:after {
-        content: "Địa chỉ: 123 Đường ABC, Quận XYZ, TP. MNV | Hotline: 0123 456 789 | Email: info@xyz.com";
-        display: block;
-        text-align: center;
-        font-size: 12px;
-        color: #7f8c8d;
-        padding: 20px 0;
-        border-top: 1px solid #ccc;
-      }
-
+      /* Fix grid layout in print */
       .grid {
-        display: grid !important;
+        display: block !important;
       }
-
-      .md\\:grid-cols-2 {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-      }
-
-      .gap-x-16 {
-        column-gap: 4rem !important;
-      }
-
-      .gap-y-4 {
-        row-gap: 1rem !important;
-      }
-
-      .flex {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        gap: 1rem !important;
+      
+      .grid > div {
+        margin-bottom: 10px;
       }
 
       @page {
-        margin: 1cm !important;
+        margin: 0.5cm !important;
         size: portrait;
       }
     }
@@ -846,7 +819,7 @@ const OrderDetail = () => {
                       colSpan="3"
                       className="py-4 px-4 text-right text-xl text-gray-700"
                     >
-                      {formatCurrency(orderDetails.totalAmount ?? 0)}
+                      {formatCurrency(orderDetails.originalTotal ?? 0)}
                     </td>
                   </tr>
                   <tr>
@@ -870,9 +843,9 @@ const OrderDetail = () => {
                     >
                       -
                       {formatCurrency(
-                        orderDetails.totalAmount +
-                          (orderDetails.shipfee ?? 0) -
-                          orderDetails.totalBill
+                        (orderDetails.originalTotal ?? 0) +
+                        (orderDetails.shipfee ?? 0) -
+                        (orderDetails.totalBill ?? 0)
                       )}
                     </td>
                   </tr>

@@ -56,9 +56,8 @@ public class Employee {
     @Column(name = "phone", nullable = false, length = 20)
     private String phone;
 
-    @Size(max = 250)
     @NotNull
-    @Column(name = "photo", nullable = false, length = 250)
+    @Column(name = "photo", nullable = false)
     private String photo;
 
     @NotNull

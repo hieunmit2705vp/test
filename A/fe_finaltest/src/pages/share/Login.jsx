@@ -17,8 +17,10 @@ const LoginPage = () => {
       const user = JSON.parse(userData);
 
       if (user?.token && user?.role) {
-        if (user.role === "ADMIN" || user.role === "STAFF") {
+        if (user.role === "ADMIN") {
           navigate("/admin/dashboard");
+        } else if (user.role === "STAFF") {
+          navigate("/admin/salePOS");
         } else {
           navigate("/home");
         }
@@ -39,8 +41,10 @@ const LoginPage = () => {
       console.log("Role:", role);
 
       // Điều hướng theo role
-      if (role === "ADMIN" || role === "STAFF") {
+      if (role === "ADMIN") {
         window.location.href = "/admin/dashboard";
+      } else if (role === "STAFF") {
+        window.location.href = "/admin/salePOS";
       } else {
         window.location.href = "/home";
       }

@@ -155,6 +155,8 @@ public class SalePOSService {
 
             if (existingOrderDetail != null) {
                 existingOrderDetail.setQuantity(existingOrderDetail.getQuantity() + detailReq.getQuantity());
+                // Cập nhật giá mới nhất và giá vốn
+                syncOrderDetailPrice(existingOrderDetail, productDetail);
                 orderDetailRepository.save(existingOrderDetail);
                 logger.info("Cập nhật số lượng sản phẩm trong giỏ hàng thành công. Order Detail ID: {}",
                         existingOrderDetail.getId());
@@ -164,19 +166,9 @@ public class SalePOSService {
                 newOrderDetail.setProductDetail(productDetail);
                 newOrderDetail.setQuantity(detailReq.getQuantity());
 
-                // Tính giá sau khuyến mãi
-                BigDecimal price = productDetail.getSalePrice();
-                if (productDetail.getPromotion() != null && productDetail.getPromotion().getStatus()
-                        && !productDetail.getPromotion().getStartDate().isAfter(LocalDateTime.now())
-                        && !productDetail.getPromotion().getEndDate().isBefore(LocalDateTime.now())) {
-                    BigDecimal discountPercentage = BigDecimal
-                            .valueOf(productDetail.getPromotion().getPromotionPercent())
-                            .divide(BigDecimal.valueOf(100));
-                    BigDecimal discountAmount = price.multiply(discountPercentage);
-                    price = price.subtract(discountAmount);
-                }
-
-                newOrderDetail.setPrice(price);
+                // Đồng bộ giá và giá vốn ngay khi tạo mới
+                syncOrderDetailPrice(newOrderDetail, productDetail);
+                
                 order.getOrderDetails().add(newOrderDetail);
                 orderDetailRepository.save(newOrderDetail);
                 logger.info("Thêm mới sản phẩm vào giỏ hàng thành công. Order Detail ID: {}", newOrderDetail.getId());
@@ -222,45 +214,20 @@ public class SalePOSService {
         int totalAmount = 0;
 
         for (OrderDetail orderDetail : order.getOrderDetails()) {
-            // Kiểm tra orderDetail có bị null không
             if (orderDetail == null || orderDetail.getProductDetail() == null) {
-                logger.error("❌ [ERROR] OrderDetail hoặc ProductDetail bị null. Order ID: {}", order.getId());
                 continue;
             }
 
-            // Log thông tin từng sản phẩm
-            logger.info("🔎 [CHECK] OrderDetail: productId={}, quantity={}, price={}",
-                    orderDetail.getProductDetail().getId(),
-                    orderDetail.getQuantity(),
-                    orderDetail.getProductDetail().getSalePrice());
-
-            BigDecimal price = orderDetail.getProductDetail().getSalePrice(); // Giá gốc
-            BigDecimal originalPrice = price; // Lưu giá gốc để debug
             ProductDetail productDetail = orderDetail.getProductDetail();
+            
+            // 🔥 QUAN TRỌNG: Đồng bộ lại giá và giá vốn (phòng trường hợp khuyến mãi hết hạn hoặc giá thay đổi)
+            syncOrderDetailPrice(orderDetail, productDetail);
+            orderDetailRepository.save(orderDetail);
 
-            // Tính tổng tiền chưa giảm giá
+            BigDecimal price = orderDetail.getPrice();
+            BigDecimal originalPrice = productDetail.getSalePrice();
+
             originalTotal = originalTotal.add(originalPrice.multiply(BigDecimal.valueOf(orderDetail.getQuantity())));
-
-            // Kiểm tra và áp dụng khuyến mãi (nếu có)
-            if (productDetail.getPromotion() != null) {
-                Promotion promotion = productDetail.getPromotion();
-                if (!promotion.getStatus()) {
-                    logger.warn("⚠️ [PROMOTION] Khuyến mãi {} bị vô hiệu hóa", promotion.getPromotionName());
-                } else if (promotion.getStartDate().isAfter(LocalDateTime.now())
-                        || promotion.getEndDate().isBefore(LocalDateTime.now())) {
-                    logger.warn("⚠️ [PROMOTION] Khuyến mãi {} chưa đến hạn hoặc đã hết hạn",
-                            promotion.getPromotionName());
-                } else {
-                    BigDecimal discountPercentage = BigDecimal.valueOf(promotion.getPromotionPercent())
-                            .divide(BigDecimal.valueOf(100));
-                    BigDecimal discountAmount = price.multiply(discountPercentage);
-                    price = price.subtract(discountAmount);
-
-                    logger.info("✅ [DISCOUNT] Giá gốc: {}, Giá giảm: {}, Giá sau giảm: {}",
-                            originalPrice, discountAmount, price);
-                }
-            }
-
             totalBill = totalBill.add(price.multiply(BigDecimal.valueOf(orderDetail.getQuantity())));
             totalAmount += orderDetail.getQuantity();
         }
@@ -401,9 +368,34 @@ public class SalePOSService {
         return orderRepository.save(order);
     }
 
+    private void syncOrderDetailPrice(OrderDetail orderDetail, ProductDetail productDetail) {
+        BigDecimal price = productDetail.getSalePrice();
+        Promotion promotion = productDetail.getPromotion();
+
+        // Kiểm tra khuyến mãi còn hiệu lực không
+        if (isPromotionActive(promotion)) {
+            BigDecimal discountPercentage = BigDecimal.valueOf(promotion.getPromotionPercent())
+                    .divide(BigDecimal.valueOf(100));
+            BigDecimal discountAmount = price.multiply(discountPercentage);
+            price = price.subtract(discountAmount);
+        }
+
+        orderDetail.setPrice(price);
+        orderDetail.setImportPrice(productDetail.getImportPrice() != null ? 
+            productDetail.getImportPrice() : BigDecimal.ZERO);
+    }
+
+    private boolean isPromotionActive(Promotion promotion) {
+        if (promotion == null || !promotion.getStatus()) {
+            return false;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        return !promotion.getStartDate().isAfter(now) && !promotion.getEndDate().isBefore(now);
+    }
+
     private BigDecimal getDiscountedPrice(ProductDetail productDetail) {
         BigDecimal salePrice = productDetail.getSalePrice();
-        if (productDetail.getPromotion() != null) {
+        if (isPromotionActive(productDetail.getPromotion())) {
             BigDecimal discountPercent = BigDecimal.valueOf(100 - productDetail.getPromotion().getPromotionPercent())
                     .divide(BigDecimal.valueOf(100), RoundingMode.HALF_UP);
             return salePrice.multiply(discountPercent);

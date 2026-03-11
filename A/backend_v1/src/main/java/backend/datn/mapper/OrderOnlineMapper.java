@@ -1,8 +1,6 @@
 package backend.datn.mapper;
 
 import backend.datn.dto.response.OrderOnlineResponse;
-import backend.datn.dto.response.OrderResponse;
-import backend.datn.entities.Order;
 import backend.datn.entities.OrderOnline;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +17,11 @@ public class OrderOnlineMapper {
                 .orderCode(order.getOrderCode() != null ? order.getOrderCode() : "")
                 .createDate(order.getCreateDate())
                 .totalAmount(order.getTotalAmount())
+                .originalTotal(
+                        (order.getOriginalTotal() == null || order.getOriginalTotal().compareTo(BigDecimal.ZERO) == 0)
+                                ? order.getTotalBill().subtract(order.getShipfee() != null ? order.getShipfee() : BigDecimal.ZERO)
+                                : order.getOriginalTotal()
+                )
                 .totalBill(order.getTotalBill())
                 .paymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod() : 0)
                 .statusOrder(order.getStatusOrder() != null ? order.getStatusOrder() : 0)

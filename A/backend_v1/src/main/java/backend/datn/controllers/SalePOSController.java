@@ -114,11 +114,14 @@ public class SalePOSController {
             System.out.println("✅ [ADD PRODUCT] Đã thêm sản phẩm vào đơn hàng #" + orderId);
             return ResponseEntity.ok(new ApiResponse("success", "Thêm sản phẩm thành công", response));
         } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse("error", e.getMessage(), null));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse("error", e.getMessage(), null));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            System.err.println("❌ [ADD PRODUCT ERROR] " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse("error", "Lỗi khi thêm sản phẩm: " + e.getMessage(), null));
         }
     }
 

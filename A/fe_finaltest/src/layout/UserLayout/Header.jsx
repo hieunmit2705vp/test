@@ -16,6 +16,7 @@ import {
   FaChevronDown,
 } from "react-icons/fa";
 import ProductService from "../../services/ProductService";
+import logo from "../../assets/logo.jpg";
 
 const Header = () => {
   const [search, setSearch] = useState("");
@@ -109,7 +110,7 @@ const Header = () => {
           <Link to="/" className="flex items-center gap-3 group flex-shrink-0 z-20">
             <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-[#1E3A8A] shadow-sm group-hover:shadow-md transition-all">
               <img
-                src="/src/assets/logo.jpg"
+                src={logo}
                 alt="Logo"
                 className="w-full h-full object-cover"
               />

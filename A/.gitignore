@@ -1,0 +1,16 @@
+# Ignore Docker env secrets
+.env
+
+# Ignore node_modules
+node_modules/
+
+# Ignore build output
+dist/
+target/
+
+docker-images/
+
+# IDE files
+.idea/
+*.iml
+.DS_Store

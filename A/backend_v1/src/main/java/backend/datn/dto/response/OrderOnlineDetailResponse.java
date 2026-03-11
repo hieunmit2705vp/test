@@ -12,5 +12,6 @@ public class OrderOnlineDetailResponse{
     OrderOnlineResponse order;
     ProductDetailResponse productDetail;
     BigDecimal price;
+    BigDecimal importPrice;
     Integer quantity;
 }

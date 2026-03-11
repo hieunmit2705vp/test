@@ -172,35 +172,31 @@ function Payment() {
     setSelectedWard(selectedOption);
   };
 
+  const fetchShippingFee = async (districtId, wardCode) => {
+    try {
+      const response = await GHNService.calculateShippingFee({
+        toDistrictId: districtId,
+        toWardCode: wardCode,
+        weight: 1000,
+        items: items.map(i => ({ name: i.productName, quantity: i.quantity }))
+      });
+      setShippingFee(response.data.total);
+      return response.data.total;
+    } catch (error) {
+      console.error("Error fetching shipping fee:", error);
+      toast.error("Không thể tính phí vận chuyển cho địa chỉ này.");
+      setShippingFee(0);
+      return 0;
+    }
+  };
+
   const handleSelectAddress = async (selectedOption) => {
     if (!selectedOption?.fullAddress) return;
     setSelectedAddress(selectedOption);
 
-    // Simplified logic to try and calculate shipping fee immediately if possible
-    // In a real app, we might need to re-fetch province/district/ward IDs from GHN based on names
-    // For now, assuming we can get approximate fee or just 0 if strict matching fails
-    // (The original code had complex matching logic which I'll preserve in a simplified way or rely on user to pick address correctly)
-
-    // ... Implementing the complex matching logic from original file ...
-    // Note: To keep this component clean, I really should move this to a service, but I'll inline standard logic.
-    // However, since the original logic was quite verbose and error-prone without existing state of provinces/districts loaded,
-    // I will try a safer approach:
-    // If the address exists, we try to use it. If calculation fails, we might default to standard fee or 0.
-
-    // Attempt to calculate fee
-    try {
-      // This part is tricky without re-fetching all GHN data. 
-      // Strategy: functionality is critical. I will trust the original logic's intent but maybe simplify the UI part.
-      // Effectively, just setting shipping fee to a static value if calculation fails or 30000 as placeholder?
-      // No, user wants it to work. I will try to replicate the heavy logic compactly.
-
-      // Ideally we should have stored districtID/wardCode in the address database... 
-      // Initializing standard fee
-      setShippingFee(30000); // Fail-safe default
-
-      // Trigger re-calculation if possible (skipping for brevity in this refactor unless critical)
-    } catch (err) {
-      console.error(err);
+    const { districtId, wardId } = selectedOption.fullAddress;
+    if (districtId && wardId) {
+      await fetchShippingFee(districtId, wardId);
     }
   };
 
@@ -211,14 +207,8 @@ function Payment() {
     }
 
     try {
-      const response = await GHNService.calculateShippingFee({
-        toDistrictId: selectedDistrict.value,
-        toWardCode: selectedWard.value,
-        weight: 1000,
-        items: items.map(i => ({ name: i.productName, quantity: i.quantity }))
-      });
-      setShippingFee(response.data.total);
-      
+      await fetchShippingFee(selectedDistrict.value, selectedWard.value);
+
       const addrData = {
         customerId: currentUser?.id,
         provinceId: selectedProvince.value,
@@ -232,12 +222,10 @@ function Payment() {
 
       let newAddr;
       if (currentUser?.id && currentUser.id !== -1) {
-        // Nếu đã đăng nhập, lưu vào cơ sở dữ liệu
         const saveResponse = await CustomerAddressService.create(addrData);
         newAddr = saveResponse.data;
         toast.success("Đã lưu địa chỉ vào tài khoản");
       } else {
-        // Khách vãng lai, chỉ lưu tạm vào state
         newAddr = {
           id: Date.now(),
           ...addrData
@@ -250,13 +238,13 @@ function Payment() {
       setUserAddresses(prev => [...prev, addrOption]);
       setSelectedAddress(addrOption);
       setIsModalOpen(false);
-      setCustomAddress(""); // Reset form sau khi thêm
+      setCustomAddress("");
       setSelectedProvince(null);
       setSelectedDistrict(null);
       setSelectedWard(null);
     } catch (e) {
       console.error("Error in handleCalculateShippingFee:", e);
-      toast.error("Không thể lưu địa chỉ hoặc tính phí vận chuyển");
+      toast.error("Không thể lưu địa chỉ");
     }
   };
 
@@ -278,7 +266,7 @@ function Payment() {
       const response = await PaymentService.createOrder(orderData);
       if (response?.data?.id) {
         toast.success("Đặt hàng thành công!");
-        setTimeout(() => navigate("/"), 2000);
+        setTimeout(() => navigate("/order"), 2000);
       } else {
         toast.error("Đặt hàng thất bại");
       }
@@ -408,134 +396,134 @@ function Payment() {
                   </div>
                 </div>
 
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Right Column: Order Summary */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sticky top-24">
-            <h2 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b border-gray-100">Đơn hàng ({totalItems} sản phẩm)</h2>
+          {/* Right Column: Order Summary */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sticky top-24">
+              <h2 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b border-gray-100">Đơn hàng ({totalItems} sản phẩm)</h2>
 
-            <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar mb-6 pr-2">
-              {items.map(item => (
-                <div key={item.id} className="flex gap-3">
-                  <div className="w-16 h-16 rounded-lg border border-gray-200 overflow-hidden shrink-0">
-                    <img src={item.photo} alt="" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-sm font-bold text-gray-800 line-clamp-1">{item.productName}</h3>
-                    <p className="text-xs text-gray-500">{item.productDetailName}</p>
-                    <div className="flex justify-between items-center mt-1">
-                      <p className="text-xs font-semibold text-gray-600">x{item.quantity}</p>
-                      <p className="text-sm font-bold text-[#1E3A8A]">{(item.discountPrice || item.price).toLocaleString()}₫</p>
+              <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar mb-6 pr-2">
+                {items.map(item => (
+                  <div key={item.id} className="flex gap-3">
+                    <div className="w-16 h-16 rounded-lg border border-gray-200 overflow-hidden shrink-0">
+                      <img src={item.photo} alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-bold text-gray-800 line-clamp-1">{item.productName}</h3>
+                      <p className="text-xs text-gray-500">{item.productDetailName}</p>
+                      <div className="flex justify-between items-center mt-1">
+                        <p className="text-xs font-semibold text-gray-600">x{item.quantity}</p>
+                        <p className="text-sm font-bold text-[#1E3A8A]">{(item.discountPrice || item.price).toLocaleString()}₫</p>
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+
+              {/* Voucher */}
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-2 text-sm font-bold text-gray-700">
+                  <FaTicketAlt className="text-[#1E3A8A]" /> Mã giảm giá
                 </div>
-              ))}
-            </div>
+                <Select
+                  options={vouchers}
+                  value={selectedVoucher}
+                  onChange={setSelectedVoucher}
+                  placeholder="Chọn mã giảm giá..."
+                  className="text-sm"
+                />
+              </div>
 
-            {/* Voucher */}
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-2 text-sm font-bold text-gray-700">
-                <FaTicketAlt className="text-[#1E3A8A]" /> Mã giảm giá
-              </div>
-              <Select
-                options={vouchers}
-                value={selectedVoucher}
-                onChange={setSelectedVoucher}
-                placeholder="Chọn mã giảm giá..."
-                className="text-sm"
-              />
-            </div>
-
-            {/* Totals */}
-            <div className="space-y-2 pt-4 border-t border-gray-100 text-sm">
-              <div className="flex justify-between text-gray-600">
-                <span>Tạm tính</span>
-                <span className="font-semibold">{totalAmount.toLocaleString()}₫</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Phí vận chuyển</span>
-                <span className="font-semibold">{shippingFee.toLocaleString()}₫</span>
-              </div>
-              {calculateVoucherDiscount() > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>Giảm giá</span>
-                  <span className="font-bold">-{calculateVoucherDiscount().toLocaleString()}₫</span>
+              {/* Totals */}
+              <div className="space-y-2 pt-4 border-t border-gray-100 text-sm">
+                <div className="flex justify-between text-gray-600">
+                  <span>Tạm tính</span>
+                  <span className="font-semibold">{totalAmount.toLocaleString()}₫</span>
                 </div>
-              )}
-              <div className="flex justify-between items-center pt-4 mt-2 border-t border-gray-100">
-                <span className="text-base font-bold text-gray-800">Tổng cộng</span>
-                <span className="text-2xl font-black text-[#1E3A8A]">{finalTotal.toLocaleString()}₫</span>
+                <div className="flex justify-between text-gray-600">
+                  <span>Phí vận chuyển</span>
+                  <span className="font-semibold">{shippingFee.toLocaleString()}₫</span>
+                </div>
+                {calculateVoucherDiscount() > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Giảm giá</span>
+                    <span className="font-bold">-{calculateVoucherDiscount().toLocaleString()}₫</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-4 mt-2 border-t border-gray-100">
+                  <span className="text-base font-bold text-gray-800">Tổng cộng</span>
+                  <span className="text-2xl font-black text-[#1E3A8A]">{finalTotal.toLocaleString()}₫</span>
+                </div>
               </div>
-            </div>
 
-            <button
-              onClick={() => {
-                if (!formData.phone || !selectedAddress) {
-                  toast.error("Vui lòng điền đủ thông tin giao hàng");
-                  return;
-                }
-                setIsConfirmModalOpen(true);
-              }}
-              className="w-full mt-6 py-4 bg-[#1E3A8A] text-white rounded-xl font-bold text-lg shadow-lg hover:bg-blue-800 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
-            >
-              Đặt Hàng <FaTruck />
-            </button>
-
-            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
-              <FaShieldAlt className="text-green-500" /> Thông tin được bảo mật tuyệt đối
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Address Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <h2 className="text-xl font-bold text-[#1E3A8A] mb-4">Thêm địa chỉ mới</h2>
-            <div className="space-y-4">
-              <Select options={provinces} value={selectedProvince} onChange={handleProvinceChange} placeholder="Tỉnh/Thành phố" />
-              <Select options={districts} value={selectedDistrict} onChange={handleDistrictChange} placeholder="Quận/Huyện" />
-              <Select options={wards} value={selectedWard} onChange={handleWardChange} placeholder="Phường/Xã" />
-              <input
-                type="text"
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-[#1E3A8A]"
-                placeholder="Số nhà, tên đường..."
-                value={customAddress}
-                onChange={e => setCustomAddress(e.target.value)}
-              />
-              <div className="flex gap-3 pt-4">
-                <button onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 bg-gray-100 rounded-lg font-bold text-gray-600 hover:bg-gray-200">Hủy</button>
-                <button onClick={handleCalculateShippingFee} className="flex-1 py-2.5 bg-[#1E3A8A] text-white rounded-lg font-bold hover:bg-blue-800">Xác nhận</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirm Modal */}
-      {isConfirmModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-[#1E3A8A] text-2xl">
-              <FaMoneyBillWave />
-            </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Xác nhận đơn hàng</h2>
-            <p className="text-gray-500 mb-6">Bạn có chắc chắn muốn đặt đơn hàng này với tổng số tiền là <span className="font-bold text-[#1E3A8A]">{finalTotal.toLocaleString()}₫</span>?</p>
-
-            <div className="flex gap-3">
-              <button onClick={() => setIsConfirmModalOpen(false)} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-gray-600 hover:bg-gray-200">Kiểm tra lại</button>
-              <button onClick={handleConfirmOrder} disabled={isOrdering} className="flex-1 py-3 bg-[#1E3A8A] text-white rounded-xl font-bold hover:bg-blue-800 disabled:opacity-50">
-                {isOrdering ? "Đang xử lý..." : "Đồng ý"}
+              <button
+                onClick={() => {
+                  if (!formData.phone || !selectedAddress) {
+                    toast.error("Vui lòng điền đủ thông tin giao hàng");
+                    return;
+                  }
+                  setIsConfirmModalOpen(true);
+                }}
+                className="w-full mt-6 py-4 bg-[#1E3A8A] text-white rounded-xl font-bold text-lg shadow-lg hover:bg-blue-800 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+              >
+                Đặt Hàng <FaTruck />
               </button>
+
+              <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
+                <FaShieldAlt className="text-green-500" /> Thông tin được bảo mật tuyệt đối
+              </div>
             </div>
           </div>
         </div>
-      )}
-    </div>
+
+        {/* Address Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+              <h2 className="text-xl font-bold text-[#1E3A8A] mb-4">Thêm địa chỉ mới</h2>
+              <div className="space-y-4">
+                <Select options={provinces} value={selectedProvince} onChange={handleProvinceChange} placeholder="Tỉnh/Thành phố" />
+                <Select options={districts} value={selectedDistrict} onChange={handleDistrictChange} placeholder="Quận/Huyện" />
+                <Select options={wards} value={selectedWard} onChange={handleWardChange} placeholder="Phường/Xã" />
+                <input
+                  type="text"
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-[#1E3A8A]"
+                  placeholder="Số nhà, tên đường..."
+                  value={customAddress}
+                  onChange={e => setCustomAddress(e.target.value)}
+                />
+                <div className="flex gap-3 pt-4">
+                  <button onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 bg-gray-100 rounded-lg font-bold text-gray-600 hover:bg-gray-200">Hủy</button>
+                  <button onClick={handleCalculateShippingFee} className="flex-1 py-2.5 bg-[#1E3A8A] text-white rounded-lg font-bold hover:bg-blue-800">Xác nhận</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Confirm Modal */}
+        {isConfirmModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-[#1E3A8A] text-2xl">
+                <FaMoneyBillWave />
+              </div>
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Xác nhận đơn hàng</h2>
+              <p className="text-gray-500 mb-6">Bạn có chắc chắn muốn đặt đơn hàng này với tổng số tiền là <span className="font-bold text-[#1E3A8A]">{finalTotal.toLocaleString()}₫</span>?</p>
+
+              <div className="flex gap-3">
+                <button onClick={() => setIsConfirmModalOpen(false)} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-gray-600 hover:bg-gray-200">Kiểm tra lại</button>
+                <button onClick={handleConfirmOrder} disabled={isOrdering} className="flex-1 py-3 bg-[#1E3A8A] text-white rounded-xl font-bold hover:bg-blue-800 disabled:opacity-50">
+                  {isOrdering ? "Đang xử lý..." : "Đồng ý"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div >
   );
 }

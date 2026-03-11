@@ -29,6 +29,11 @@ const RegisterForm = () => {
       setMessage(response.message || "Đăng ký thành công.");
       // Reset form sau khi đăng ký thành công
       setFormData({ username: "", email: "", phone: "", password: "" });
+      
+      // Tự động chuyển hướng sang trang đăng nhập sau 2 giây
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
     } catch (err) {
       setError(err.message || "Không thể đăng ký.");
     }

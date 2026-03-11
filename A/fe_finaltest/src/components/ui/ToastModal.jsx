@@ -73,7 +73,7 @@ const Toast = ({ type, message, onClose }) => {
       ></div>
 
       {/* CSS Keyframes */}
-      <style jsx>{`
+      <style>{`
         @keyframes slideIn {
           from {
             transform: translateX(100%);

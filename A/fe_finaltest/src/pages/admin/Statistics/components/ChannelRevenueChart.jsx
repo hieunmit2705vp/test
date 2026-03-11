@@ -3,14 +3,15 @@ import StatisticsService from "../../../../services/StatisticsService";
 import { Card, CardContent } from "./card";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
-const ChannelRevenueChart = () => {
+const ChannelRevenueChart = ({ startDate, endDate }) => {
     const [channelRevenue, setChannelRevenue] = useState([]);
     const [error, setError] = useState(null);
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!startDate || !endDate) return;
             try {
-                const data = await StatisticsService.getChannelRevenue();
+                const data = await StatisticsService.getChannelRevenue(startDate, endDate);
                 const formattedData = data.map(item => ({
                     date: `${item.dayNumber}/${item.monthNumber}/${item.yearNumber}`,
                     onlineRevenue: item.onlineRevenue || 0,
@@ -24,7 +25,7 @@ const ChannelRevenueChart = () => {
             }
         };
         fetchData();
-    }, []);
+    }, [startDate, endDate]);
 
     if (error) {
         return (

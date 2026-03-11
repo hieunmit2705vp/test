@@ -46,15 +46,15 @@ export default function Employee() {
 
   const fetchEmployees = async () => {
     try {
-      const { content, totalPages } = await EmployeeService.getAll(
+      const response = await EmployeeService.getAll(
         currentPage,
         pageSize,
         search,
         sortConfig.key,
         sortConfig.direction
       );
-      setEmployees(content);
-      setTotalPages(totalPages);
+      setEmployees(response.content || []);
+      setTotalPages(response.page?.totalPages || 0);
     } catch (error) {
       console.error("Error fetching employees:", error);
       if (error.response?.status === 403) {
@@ -133,9 +133,19 @@ export default function Employee() {
         <td className="px-3 py-2 text-center font-bold text-gray-700">#{item.id}</td>
         <td className="px-3 py-2 font-mono text-xs text-gray-600">{item.employeeCode}</td>
         <td className="px-3 py-2">
-          <div className="flex items-center space-x-2">
-            <img src={item.photo} className="w-8 h-8 rounded-full ring-2 ring-[#1E3A8A] ring-offset-1" alt="avatar" />
-            <span className="font-medium text-gray-800">{item.username}</span>
+          <div className="flex items-center space-x-3">
+            <div className="relative group">
+              <img
+                src={item.photo || 'https://via.placeholder.com/150'}
+                className="w-10 h-10 rounded-lg object-cover ring-2 ring-blue-100 group-hover:ring-blue-400 transition-all duration-300"
+                alt="avatar"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+                }}
+              />
+            </div>
+            <span className="font-semibold text-gray-800">{item.username}</span>
           </div>
         </td>
         <td className="px-3 py-2 font-medium text-gray-700">{item.fullname}</td>

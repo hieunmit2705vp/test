@@ -77,7 +77,6 @@ public class Order {
     @Column(name = "kind_of_order", nullable = false)
     private Boolean kindOfOrder = false;
 
-
     // Danh sách OrderDetail
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore

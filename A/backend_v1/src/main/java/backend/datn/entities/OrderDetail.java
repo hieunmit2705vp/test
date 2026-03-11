@@ -41,4 +41,8 @@ public class OrderDetail {
     @Column(name = "price", nullable = false, precision = 18, scale = 2)
     private BigDecimal price;
 
+    @NotNull
+    @Column(name = "import_price", nullable = false, precision = 18, scale = 2)
+    private BigDecimal importPrice;
+
 }

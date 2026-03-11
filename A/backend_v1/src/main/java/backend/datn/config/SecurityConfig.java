@@ -39,9 +39,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll() // Cho phép không cần token
                         .requestMatchers(HttpMethod.GET,"/api/products/**").permitAll() // Cho phép không cần token
-                        .requestMatchers("/api/account/**").authenticated() // Cho phép không cần token
-                        .requestMatchers(HttpMethod.GET,"/api/product-details/**").permitAll() // Cho phép không cần token
-                        .requestMatchers("/api/brand/**").permitAll()
+                        .requestMatchers("/api/account/**").authenticated()
+                        .requestMatchers(HttpMethod.GET,"/api/product-details/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/brand/**").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/sizes/**").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/sleeve/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
@@ -50,18 +50,48 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,"/api/vouchers/**").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/addresses/**").permitAll()
                         .requestMatchers(HttpMethod.POST,"/api/addresses/**").permitAll()
-                        .requestMatchers(HttpMethod.GET,"/api/customers/**").permitAll()
-                        .requestMatchers(HttpMethod.POST,"/api/customers/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/customers/**").hasAnyRole("ADMIN", "STAFF")
+                        .requestMatchers(HttpMethod.POST,"/api/customers/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT,"/api/addresses/**").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/order/**").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api//orders/online/**").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/v1/**").permitAll()
-                        .requestMatchers(HttpMethod.GET,"/api/products/**").permitAll() // Cho phép không cần token
-                        .requestMatchers(HttpMethod.GET,"/api/employees/**").hasRole("ADMIN") // Hạn chế chỉ dành cho ADMIN
-                        .requestMatchers("/api/statistics/**").hasRole("ADMIN") // Hạn chế chỉ dành cho ADMIN
-                        .requestMatchers("/api/**").hasAnyRole("ADMIN", "STAFF") // Cho phép cả ADMIN & STAFF
-                        .requestMatchers("/cart/**").hasAnyRole("CUSTOMER") // Chỉ cho phép CUSTOMER
-                        .anyRequest().permitAll() // Còn lại cần xác thực
+                        .requestMatchers(HttpMethod.GET,"/api/products/**").permitAll()
+
+                        // --- Restricted for ADMIN ONLY ---
+                        // --- Restricted for ADMIN ONLY (Modifications) ---
+                        .requestMatchers(HttpMethod.POST, "/api/vouchers/**", "/api/brand/**", "/api/material/**", 
+                                       "/api/categories/**", "/api/colors/**", "/api/collars/**", 
+                                       "/api/sizes/**", "/api/sleeve/**", "/api/promotion/**", "/api/customers/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/vouchers/**", "/api/brand/**", "/api/material/**", 
+                                       "/api/categories/**", "/api/colors/**", "/api/collars/**", 
+                                       "/api/sizes/**", "/api/sleeve/**", "/api/promotion/**", "/api/customers/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/vouchers/**", "/api/brand/**", "/api/material/**", 
+                                       "/api/categories/**", "/api/colors/**", "/api/collars/**", 
+                                       "/api/sizes/**", "/api/sleeve/**", "/api/promotion/**", "/api/customers/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/vouchers/**", "/api/brand/**", "/api/material/**", 
+                                       "/api/categories/**", "/api/colors/**", "/api/collars/**", 
+                                       "/api/sizes/**", "/api/sleeve/**", "/api/promotion/**", "/api/customers/**").hasRole("ADMIN")
+
+                        .requestMatchers("/api/statistics/**").hasRole("ADMIN")
+                        .requestMatchers("/api/audit-logs/**").hasRole("ADMIN")
+                        .requestMatchers("/api/employees/**").hasRole("ADMIN")
+                        
+                         // Product Modification
+                        .requestMatchers(HttpMethod.POST, "/api/products/**", "/api/product-details/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**", "/api/product-details/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**", "/api/product-details/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/products/**", "/api/product-details/**").hasRole("ADMIN")
+
+                        // --- Shared for ADMIN & STAFF (Viewing & Others) ---
+                        .requestMatchers(HttpMethod.GET, "/api/vouchers/**", "/api/brand/**", "/api/material/**", 
+                                       "/api/categories/**", "/api/colors/**", "/api/collars/**", 
+                                       "/api/sizes/**", "/api/sleeve/**", "/api/promotion/**").hasAnyRole("ADMIN", "STAFF")
+
+                        // --- Shared for ADMIN & STAFF ---
+                        .requestMatchers("/api/**").hasAnyRole("ADMIN", "STAFF")
+                        .requestMatchers("/cart/**").hasAnyRole("CUSTOMER")
+                        .anyRequest().permitAll()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Không lưu session

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useSelector } from "react-redux";
 import VoucherService from "../../../services/VoucherServices";
 import CustomerService from "../../../services/CustomerService";
 import { toast } from "react-toastify";
@@ -14,7 +15,7 @@ const formatDateTime = (date) => {
   if (isNaN(date.getTime())) return null;
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const day = String(date.getMonth() + 1).padStart(2, "0");
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
   const seconds = String(date.getSeconds()).padStart(2, "0");
@@ -22,6 +23,8 @@ const formatDateTime = (date) => {
 };
 
 export default function Voucher() {
+  const { role } = useSelector((state) => state.user);
+  const isAdmin = role === "ADMIN";
   const [vouchers, setVouchers] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -397,12 +400,14 @@ export default function Voucher() {
           >
             Bỏ lọc
           </button>
-          <button
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-150"
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            Thêm Voucher
-          </button>
+          {isAdmin && (
+            <button
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-150"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              Thêm Voucher
+            </button>
+          )}
         </div>
       </div>
 
@@ -476,37 +481,39 @@ export default function Voucher() {
                   {item.status ? "Kích hoạt" : "Không kích hoạt"}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex justify-center items-center gap-3 min-w-[120px]">
-                    <button
-                      className="text-blue-600 hover:text-blue-800 transition-colors duration-150"
-                      onClick={() => handleUpdateVoucher(item)}
-                      title="Chỉnh sửa"
-                    >
-                      <AiOutlineEdit size={20} />
-                    </button>
-                    <Switch
-                      onChange={() => handleToggleStatus(item.id, item.status)}
-                      checked={item.status}
-                      height={20}
-                      width={40}
-                      onColor="#10B981"
-                      offColor="#EF4444"
-                      uncheckedIcon={false}
-                      checkedIcon={false}
-                      className="react-switch"
-                    />
-                    <div className="w-5">
-                      {item.status && (
-                        <button
-                          className="text-green-600 hover:text-green-800 transition-colors duration-150"
-                          onClick={() => handleOpenEmailModal(item)}
-                          title="Gửi email"
-                        >
-                          <AiOutlineMail size={20} />
-                        </button>
-                      )}
+                  {isAdmin && (
+                    <div className="flex justify-center items-center gap-3 min-w-[120px]">
+                      <button
+                        className="text-blue-600 hover:text-blue-800 transition-colors duration-150"
+                        onClick={() => handleUpdateVoucher(item)}
+                        title="Chỉnh sửa"
+                      >
+                        <AiOutlineEdit size={20} />
+                      </button>
+                      <Switch
+                        onChange={() => handleToggleStatus(item.id, item.status)}
+                        checked={item.status}
+                        height={20}
+                        width={40}
+                        onColor="#10B981"
+                        offColor="#EF4444"
+                        uncheckedIcon={false}
+                        checkedIcon={false}
+                        className="react-switch"
+                      />
+                      <div className="w-5">
+                        {item.status && (
+                          <button
+                            className="text-green-600 hover:text-green-800 transition-colors duration-150"
+                            onClick={() => handleOpenEmailModal(item)}
+                            title="Gửi email"
+                          >
+                            <AiOutlineMail size={20} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </td>
               </tr>
             );

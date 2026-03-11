@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import OrderService from "../../services/OrderService";
 import { AiOutlineEye, AiOutlineSearch, AiOutlineInbox } from "react-icons/ai";
@@ -314,14 +314,15 @@ const UserOrder = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("awaiting_confirm");
   const [customer, setCustomer] = useState(null);
   const navigate = useNavigate();
 
   const tabs = [
     { key: "all", label: "Tất cả", status: null },
-    { key: "awaiting_delivery", label: "Chờ giao hàng", status: 2 },
-    { key: "transporting", label: "Vận chuyển", status: 3 },
+    { key: "awaiting_confirm", label: "Chờ xác nhận", status: 0 },
+    { key: "awaiting_delivery", label: "Đã xác nhận", status: 2 },
+    { key: "transporting", label: "Đang giao hàng", status: 3 },
     { key: "completed", label: "Hoàn thành", status: 5 },
     { key: "canceled", label: "Đã hủy", status: -1 },
   ];
@@ -408,7 +409,7 @@ const UserOrder = () => {
   useEffect(() => {
     const status = tabs.find((tab) => tab.key === activeTab)?.status;
     let filteredOrders = allOrders;
-    if (status !== null) {
+    if (status !== null && status !== undefined) {
       filteredOrders = allOrders.filter(
         (order) => Number(order.statusOrder) === status
       );
@@ -497,7 +498,7 @@ const UserOrder = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 font-sans">
-      <ToastContainer position="top-right" autoClose={3000} theme="colored" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Header Section */}
@@ -829,7 +830,7 @@ const UserOrder = () => {
                 <div className="flex flex-col items-end gap-3 border-t border-gray-100 pt-6">
                   <div className="flex justify-between w-full max-w-xs text-gray-600">
                     <span>Tổng tiền hàng:</span>
-                    <span className="font-medium">{formatCurrency(selectedOrder.totalAmount)}</span>
+                    <span className="font-medium">{formatCurrency(selectedOrder.originalTotal)}</span>
                   </div>
                   <div className="flex justify-between w-full max-w-xs text-gray-600">
                     <span>Phí vận chuyển:</span>
@@ -837,7 +838,7 @@ const UserOrder = () => {
                   </div>
                   <div className="flex justify-between w-full max-w-xs text-green-600">
                     <span>Giảm giá:</span>
-                    <span className="font-medium">-{formatCurrency((selectedOrder.totalAmount + selectedOrder.shipfee) - selectedOrder.totalBill)}</span>
+                    <span className="font-medium">-{formatCurrency((selectedOrder.originalTotal + selectedOrder.shipfee) - selectedOrder.totalBill)}</span>
                   </div>
                   <div className="flex justify-between w-full max-w-xs text-xl font-bold text-[#1E3A8A] border-t border-gray-200 pt-3 mt-1">
                     <span>Tổng thanh toán:</span>

@@ -36,6 +36,10 @@ public class OrderOnlineDetail {
     private BigDecimal price;
 
     @NotNull
+    @Column(name = "import_price", nullable = false, precision = 18, scale = 2)
+    private BigDecimal importPrice;
+
+    @NotNull
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 

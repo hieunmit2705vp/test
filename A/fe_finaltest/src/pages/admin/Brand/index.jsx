@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useSelector } from "react-redux";
 import { AiOutlineEdit, AiOutlinePlus, AiOutlineSearch } from "react-icons/ai";
 import Switch from "react-switch";
 import BrandService from "../../../services/BrandService";
@@ -7,6 +8,8 @@ import UpdateModal from "./components/UpdateModal";
 import CreateModal from "./components/CreateModal";
 
 export default function Brand() {
+  const { role } = useSelector((state) => state.user);
+  const isAdmin = role === "ADMIN";
   const [brands, setBrands] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -100,13 +103,15 @@ export default function Brand() {
               onChange={handleSearch}
             />
           </div>
-          <button
-            className="bg-[#1E3A8A] text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:bg-[#163172] transition-all duration-300 flex items-center gap-2 transform hover:scale-105"
-            onClick={() => setCreateModal(true)}
-          >
-            <AiOutlinePlus className="text-xl" />
-            Thêm Mới
-          </button>
+          {isAdmin && (
+            <button
+              className="bg-[#1E3A8A] text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:bg-[#163172] transition-all duration-300 flex items-center gap-2 transform hover:scale-105"
+              onClick={() => setCreateModal(true)}
+            >
+              <AiOutlinePlus className="text-xl" />
+              Thêm Mới
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -171,29 +176,31 @@ export default function Brand() {
                       </span>
                     </td>
                     <td className="py-4 px-6 text-center">
-                      <div className="flex items-center justify-center gap-4">
-                        <button
-                          className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-800 flex items-center justify-center transition-all duration-200 shadow-sm border border-blue-200"
-                          onClick={() => handleUpdateBrand(item)}
-                          title="Chỉnh sửa"
-                        >
-                          <AiOutlineEdit size={18} />
-                        </button>
-                        <Switch
-                          onChange={() => handleToggleStatus(item.id)}
-                          checked={item.status}
-                          height={20}
-                          width={44}
-                          offColor="#E5E7EB"
-                          onColor="#10B981"
-                          offHandleColor="#9CA3AF"
-                          onHandleColor="#FFFFFF"
-                          boxShadow="0px 1px 3px rgba(0, 0, 0, 0.3)"
-                          activeBoxShadow="0px 0px 1px 2px rgba(0, 0, 0, 0.2)"
-                          uncheckedIcon={false}
-                          checkedIcon={false}
-                        />
-                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center justify-center gap-4">
+                          <button
+                            className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-800 flex items-center justify-center transition-all duration-200 shadow-sm border border-blue-200"
+                            onClick={() => handleUpdateBrand(item)}
+                            title="Chỉnh sửa"
+                          >
+                            <AiOutlineEdit size={18} />
+                          </button>
+                          <Switch
+                            onChange={() => handleToggleStatus(item.id)}
+                            checked={item.status}
+                            height={20}
+                            width={44}
+                            offColor="#E5E7EB"
+                            onColor="#10B981"
+                            offHandleColor="#9CA3AF"
+                            onHandleColor="#FFFFFF"
+                            boxShadow="0px 1px 3px rgba(0, 0, 0, 0.3)"
+                            activeBoxShadow="0px 0px 1px 2px rgba(0, 0, 0, 0.2)"
+                            uncheckedIcon={false}
+                            checkedIcon={false}
+                          />
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

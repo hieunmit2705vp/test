@@ -41,7 +41,7 @@ const Statistic = lazy(() => import("../pages/admin/Statistics"));
 const AuditLog = lazy(() => import("../pages/admin/AuditLog"));
 
 const adminRoutes = [
-  { path: "dashboard", component: Dashboard, role: ["ADMIN", "STAFF"] },
+  { path: "dashboard", component: Dashboard, role: ["ADMIN"] },
   { path: "salePOS", component: POS, role: ["ADMIN", "STAFF"] },
   { path: "customer", component: Customer, role: ["ADMIN", "STAFF"] },
   { path: "employee", component: Employee, role: ["ADMIN"] },
@@ -54,19 +54,19 @@ const adminRoutes = [
   {
     path: "product/create",
     component: CreateProduct,
-    role: ["ADMIN", "STAFF"],
+    role: ["ADMIN"],
   },
-  { path: "brand", component: Brand, role: ["ADMIN", "STAFF"] },
-  { path: "material", component: Material, role: ["ADMIN", "STAFF"] },
-  { path: "category", component: Category, role: ["ADMIN", "STAFF"] },
-  { path: "attribute/collar", component: Collar, role: ["ADMIN", "STAFF"] },
-  { path: "attribute/color", component: Color, role: ["ADMIN", "STAFF"] },
-  { path: "attribute/size", component: Size, role: ["ADMIN", "STAFF"] },
-  { path: "attribute/sleeve", component: Sleeve, role: ["ADMIN", "STAFF"] },
+  { path: "brand", component: Brand, role: ["ADMIN"] },
+  { path: "material", component: Material, role: ["ADMIN"] },
+  { path: "category", component: Category, role: ["ADMIN"] },
+  { path: "attribute/collar", component: Collar, role: ["ADMIN"] },
+  { path: "attribute/color", component: Color, role: ["ADMIN"] },
+  { path: "attribute/size", component: Size, role: ["ADMIN"] },
+  { path: "attribute/sleeve", component: Sleeve, role: ["ADMIN"] },
   {
     path: "attribute/promotion",
     component: Promotion,
-    role: ["ADMIN", "STAFF"],
+    role: ["ADMIN"],
   },
   { path: "order/pos", component: OrderPOS, role: ["ADMIN", "STAFF"] }, // Route cho Hóa đơn POS
   { path: "order/online", component: OrderOnline, role: ["ADMIN", "STAFF"] }, // Route cho Đơn hàng Online

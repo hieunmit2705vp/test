@@ -3,14 +3,15 @@ import StatisticsService from "../../../../services/StatisticsService";
 import { Card, CardContent } from "./card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
-const TopCustomersChart = () => {
+const TopCustomersChart = ({ startDate, endDate }) => {
     const [topCustomers, setTopCustomers] = useState([]);
     const [error, setError] = useState(null);
 
     useEffect(() => {
         const fetchData = async () => {
+            if (!startDate || !endDate) return;
             try {
-                const data = await StatisticsService.getTop5Customers();
+                const data = await StatisticsService.getTop5Customers(startDate, endDate);
                 setTopCustomers(data);
                 setError(null);
             } catch (err) {
@@ -19,7 +20,7 @@ const TopCustomersChart = () => {
             }
         };
         fetchData();
-    }, []);
+    }, [startDate, endDate]);
 
     if (error) {
         return (

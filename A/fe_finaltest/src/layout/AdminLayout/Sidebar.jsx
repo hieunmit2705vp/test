@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   FaChartPie,
   FaUserTie,
@@ -24,12 +25,15 @@ import {
 
 function Sidebar() {
   const location = useLocation();
+  const { role } = useSelector((state) => state.user);
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState({
     product: true,
     account: false,
     order: false
   });
+
+  const isAdmin = role === "ADMIN";
 
   const toggleMenu = (menu) => {
     // If collapsed, expand the sidebar first for better UX
@@ -45,7 +49,8 @@ function Sidebar() {
   const isActive = (path) => location.pathname === path;
 
   // Modernized Menu Item
-  const MenuItem = ({ to, icon, label, depth = 0 }) => {
+  const MenuItem = ({ to, icon, label, depth = 0, visible = true }) => {
+    if (!visible) return null;
     const active = isActive(to);
 
     // Calculate padding based on depth ONLY if NOT collapsed
@@ -87,28 +92,31 @@ function Sidebar() {
     );
   };
 
-  const SubHeader = ({ label, isOpen, onClick, icon }) => (
-    <li className="px-2 mt-3 mb-1">
-      <div
-        onClick={onClick}
-        title={collapsed ? label : ""}
-        className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all duration-300 group
-                 ${isOpen ? "bg-white/5 text-white" : "text-blue-200 hover:bg-white/5 hover:text-white"}
-                 ${collapsed ? "justify-center" : ""}
-             `}
-      >
-        <div className={`flex items-center gap-3 z-10 transition-transform group-hover:translate-x-1 ${collapsed ? "justify-center w-full" : ""}`}>
-          <span className={`text-lg transition-colors duration-300 ${isOpen ? "text-blue-400" : "group-hover:text-blue-400"} ${collapsed ? "text-2xl" : ""}`}>{icon}</span>
-          {!collapsed && <span className="font-semibold tracking-wide truncate">{label}</span>}
-        </div>
-        {!collapsed && (
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${isOpen ? "bg-white/10 rotate-90" : "bg-transparent"}`}>
-            <FaChevronRight className="text-xs" />
+  const SubHeader = ({ label, isOpen, onClick, icon, visible = true }) => {
+    if (!visible) return null;
+    return (
+      <li className="px-2 mt-3 mb-1">
+        <div
+          onClick={onClick}
+          title={collapsed ? label : ""}
+          className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all duration-300 group
+                   ${isOpen ? "bg-white/5 text-white" : "text-blue-200 hover:bg-white/5 hover:text-white"}
+                   ${collapsed ? "justify-center" : ""}
+               `}
+        >
+          <div className={`flex items-center gap-3 z-10 transition-transform group-hover:translate-x-1 ${collapsed ? "justify-center w-full" : ""}`}>
+            <span className={`text-lg transition-colors duration-300 ${isOpen ? "text-blue-400" : "group-hover:text-blue-400"} ${collapsed ? "text-2xl" : ""}`}>{icon}</span>
+            {!collapsed && <span className="font-semibold tracking-wide truncate">{label}</span>}
           </div>
-        )}
-      </div>
-    </li>
-  );
+          {!collapsed && (
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${isOpen ? "bg-white/10 rotate-90" : "bg-transparent"}`}>
+              <FaChevronRight className="text-xs" />
+            </div>
+          )}
+        </div>
+      </li>
+    );
+  };
 
   return (
     <div
@@ -141,7 +149,7 @@ function Sidebar() {
       {/* Menu List */}
       <ul className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar-dark py-6 space-y-1 pb-20">
 
-        <MenuItem to="/admin" icon={<FaChartPie />} label="Dashboard" />
+        <MenuItem to="/admin/dashboard" icon={<FaChartPie />} label="Dashboard" visible={isAdmin} />
 
         {/* Section Divider */}
         {!collapsed ? (
@@ -189,14 +197,15 @@ function Sidebar() {
         {!collapsed && (
           <div className={`overflow-hidden transition-all duration-300 ease-in-out ${openMenus.product ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"}`}>
             <MenuItem to="/admin/product" icon={<FaTshirt />} label="Danh sách SP" depth={1} />
-            <MenuItem to="/admin/product/create" icon={<FaRegPlusSquare />} label="Thêm mới" depth={1} />
-            <MenuItem to="/admin/brand" icon={<FaTrademark />} label="Thương hiệu" depth={1} />
-            <MenuItem to="/admin/material" icon={<FaCubes />} label="Chất liệu" depth={1} />
-            <MenuItem to="/admin/attribute/collar" icon={<FaThLarge />} label="Cổ áo" depth={1} />
-            <MenuItem to="/admin/attribute/color" icon={<FaPalette />} label="Màu sắc" depth={1} />
-            <MenuItem to="/admin/attribute/size" icon={<FaRulerCombined />} label="Kích thước" depth={1} />
-            <MenuItem to="/admin/attribute/sleeve" icon={<FaCloudSun />} label="Tay áo" depth={1} />
-            <MenuItem to="/admin/attribute/promotion" icon={<FaTags />} label="Khuyến mãi" depth={1} />
+            <MenuItem to="/admin/product/create" icon={<FaRegPlusSquare />} label="Thêm mới" depth={1} visible={isAdmin} />
+            <MenuItem to="/admin/category" icon={<FaThLarge />} label="Danh mục" depth={1} visible={isAdmin} />
+            <MenuItem to="/admin/brand" icon={<FaTrademark />} label="Thương hiệu" depth={1} visible={isAdmin} />
+            <MenuItem to="/admin/material" icon={<FaCubes />} label="Chất liệu" depth={1} visible={isAdmin} />
+            <MenuItem to="/admin/attribute/collar" icon={<FaThLarge />} label="Cổ áo" depth={1} visible={isAdmin} />
+            <MenuItem to="/admin/attribute/color" icon={<FaPalette />} label="Màu sắc" depth={1} visible={isAdmin} />
+            <MenuItem to="/admin/attribute/size" icon={<FaRulerCombined />} label="Kích thước" depth={1} visible={isAdmin} />
+            <MenuItem to="/admin/attribute/sleeve" icon={<FaCloudSun />} label="Tay áo" depth={1} visible={isAdmin} />
+            <MenuItem to="/admin/attribute/promotion" icon={<FaTags />} label="Khuyến mãi" depth={1} visible={isAdmin} />
           </div>
         )}
 
@@ -209,22 +218,22 @@ function Sidebar() {
         />
         {!collapsed && (
           <div className={`overflow-hidden transition-all duration-300 ease-in-out ${openMenus.account ? "max-h-40 opacity-100" : "max-h-0 opacity-0"}`}>
-            <MenuItem to="/admin/employee" icon={<FaUserTie />} label="Nhân viên" depth={1} />
+            <MenuItem to="/admin/employee" icon={<FaUserTie />} label="Nhân viên" depth={1} visible={isAdmin} />
             <MenuItem to="/admin/customer" icon={<FaUsers />} label="Khách hàng" depth={1} />
           </div>
         )}
 
-        {!collapsed ? (
+        {isAdmin && !collapsed ? (
           <div className="px-5 py-2 mt-6 mb-1 text-[10px] font-black text-blue-400/80 uppercase tracking-widest border-t border-white/5 pt-4 truncate">
             Thống Kê
           </div>
-        ) : (
+        ) : isAdmin ? (
           <div className="h-px bg-white/10 my-4 mx-4"></div>
-        )}
+        ) : null}
 
         <MenuItem to="/admin/voucher" icon={<FaMoneyBillWave />} label="Quản lý Voucher" />
-        <MenuItem to="/admin/statistics" icon={<FaChartBar />} label="Báo Cáo Thống Kê" />
-        <MenuItem to="/admin/audit-logs" icon={<FaHistory />} label="Lịch sử hệ thống" />
+        <MenuItem to="/admin/statistics" icon={<FaChartBar />} label="Báo Cáo Thống Kê" visible={isAdmin} />
+        <MenuItem to="/admin/audit-logs" icon={<FaHistory />} label="Lịch sử hệ thống" visible={isAdmin} />
 
       </ul>
 

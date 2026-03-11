@@ -3,24 +3,19 @@ import { useParams, useNavigate } from "react-router-dom";
 import OrderService from "../../../services/OrderService";
 import { toast } from "react-toastify";
 
-// Các trạng thái hóa đơn POS
 const orderStatusMap = {
+  "-1": "Đã hủy",
   1: "Chờ thanh toán",
   5: "Hoàn thành",
 };
 
-// Tạo lớp CSS cho từng trạng thái
 const getStatusClass = (status) => {
   const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
-  switch (status) {
-    case 5: // Hoàn thành
-      return `${baseClasses} bg-green-100 text-green-800`;
-    case -1: // Đã hủy
-      return `${baseClasses} bg-red-100 text-red-800`;
-    case 1: // Chờ thanh toán
-      return `${baseClasses} bg-blue-100 text-blue-800`;
-    default:
-      return `${baseClasses} bg-gray-100 text-gray-800`; // Trạng thái mặc định (nếu có)
+  switch (Number(status)) {
+    case -1: return `${baseClasses} bg-red-100 text-red-800`;
+    case 1: return `${baseClasses} bg-blue-100 text-blue-800`;
+    case 5: return `${baseClasses} bg-green-100 text-green-800`;
+    default: return `${baseClasses} bg-gray-100 text-gray-800`;
   }
 };
 

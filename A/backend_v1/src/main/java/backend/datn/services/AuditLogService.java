@@ -45,7 +45,7 @@ public class AuditLogService {
                     Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
                     if (principal instanceof CustomUserDetails) {
                         CustomUserDetails user = (CustomUserDetails) principal;
-                        actor = user.getFullname() + " #" + user.getId();
+                        actor = user.getUsername() + " #" + user.getId();
                     } else if (principal instanceof String) {
                         actor = (String) principal;
                     }
@@ -123,8 +123,22 @@ public class AuditLogService {
                 }
 
                 if (entityName != null && !entityName.trim().isEmpty()) {
-                    predicates.add(cb.like(cb.lower(root.get("entityName")), "%" + entityName.trim().toLowerCase() + "%"));
-                    logger.debug("Thêm filter entityName: {}", entityName);
+                    String rawEntityName = entityName.trim();
+                    if (rawEntityName.contains("#")) {
+                        String pattern = "%" + rawEntityName.toLowerCase() + "%";
+                        predicates.add(cb.like(
+                            cb.lower(
+                                cb.concat(
+                                    cb.concat(root.get("entityName"), " #"), 
+                                    root.get("entityId").as(String.class)
+                                )
+                            ), 
+                            pattern
+                        ));
+                    } else {
+                        predicates.add(cb.like(cb.lower(root.get("entityName")), "%" + rawEntityName.toLowerCase() + "%"));
+                    }
+                    logger.debug("Thêm filter entityName: {}", rawEntityName);
                 }
 
                 if (startDate != null) {

@@ -18,4 +18,6 @@ public class ProductDetailDTO {
 
     private BigDecimal totalRevenue;
 
+    private BigDecimal totalProfit;
+
 }

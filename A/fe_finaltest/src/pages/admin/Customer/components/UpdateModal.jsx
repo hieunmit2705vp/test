@@ -211,8 +211,8 @@ const UpdateModal = ({ isOpen, setUpdateModal, customer, fetchCustomers }) => {
                                         type="text"
                                         name="username"
                                         value={updatedCustomer.username || ''}
-                                        onChange={handleChange}
-                                        className="border-2 border-gray-300 rounded-lg px-4 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-[#1E3A8A] transition-all text-sm"
+                                        readOnly
+                                        className="border-2 border-gray-200 bg-gray-50 rounded-lg px-4 py-2.5 w-full text-sm text-gray-500 cursor-not-allowed"
                                     />
                                 </div>
                                 <div className="flex flex-col">

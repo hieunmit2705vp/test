@@ -1,0 +1,51 @@
+services:
+  # =========================================
+  # BACKEND - Spring Boot
+  # =========================================
+  backend:
+    build:
+      context: ./backend_v1
+      dockerfile: Dockerfile
+    container_name: datn_backend
+    restart: unless-stopped
+    environment:
+      # Kết nối tới MySQL đã cài sẵn trên VPS (dùng host.docker.internal hoặc IP thật)
+      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST:-host.docker.internal}:${DB_PORT:-3306}/${DB_NAME:-testdb}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Ho_Chi_Minh
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-root}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-123456}
+      # Mail
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: docker
+    ports:
+      - "8080:8080"
+    networks:
+      - datn_network
+    # Cho phép container truy cập host machine (nơi MySQL đang chạy)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # =========================================
+  # FRONTEND - React + Nginx
+  # =========================================
+  frontend:
+    build:
+      context: ./fe_finaltest
+      dockerfile: Dockerfile
+      args:
+        # URL backend: thay bằng IP/domain thật của VPS
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    container_name: datn_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - datn_network
+
+networks:
+  datn_network:
+    name: datn_network
+    driver: bridge

@@ -48,12 +48,16 @@ public class  OrderOnline {
     private LocalDateTime createDate;
 
     @NotNull
-    @Column(name = "total_amount")
-    private BigDecimal totalAmount = BigDecimal.ZERO;
+    @Column(name = "total_amount", nullable = false)
+    private Integer totalAmount = 0; // Tổng số lượng sản phẩm
 
     @NotNull
-    @Column(name = "total_bill")
-    private BigDecimal totalBill = BigDecimal.ZERO;
+    @Column(name = "original_total", nullable = false, precision = 18, scale = 2)
+    private BigDecimal originalTotal = BigDecimal.ZERO; // Tổng tiền trước khi áp voucher
+
+    @NotNull
+    @Column(name = "total_bill", nullable = false, precision = 18, scale = 2)
+    private BigDecimal totalBill = BigDecimal.ZERO; // Tổng tiền sau khi áp voucher & shipfee
 
     @NotNull
     @Column(name = "payment_method", nullable = false)

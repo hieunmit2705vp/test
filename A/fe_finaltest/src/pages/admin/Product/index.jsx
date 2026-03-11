@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { AiOutlineEye, AiOutlineEdit, AiOutlinePlus, AiOutlineSearch } from "react-icons/ai";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import Switch from "react-switch";
 import ProductService from "../../../services/ProductService";
 import { toast } from "react-toastify";
@@ -8,6 +10,8 @@ import UpdateModal from './components/UpdateModal';
 import CreateModal from './components/CreateModal';
 
 export default function Product() {
+  const { role } = useSelector((state) => state.user);
+  const isAdmin = role === "ADMIN";
   const [items, setItems] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -30,7 +34,7 @@ export default function Product() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const { content, totalPages } = await ProductService.getAllProducts(
+        const { content, page } = await ProductService.getAllProducts(
           currentPage,
           pageSize,
           search,
@@ -39,7 +43,7 @@ export default function Product() {
           sortDirection
         );
         setItems(content);
-        setTotalPages(totalPages);
+        setTotalPages(page.totalPages);
       } catch (error) {
         console.error("Error fetching products:", error);
       }
@@ -127,7 +131,7 @@ export default function Product() {
     try {
       await ProductService.createProduct(newProduct);
       // Fetch lại data
-      const { content, totalPages: newTotalPages } = await ProductService.getAllProducts(
+      const { content, page: newPageInfo } = await ProductService.getAllProducts(
         0, // Về trang đầu
         pageSize,
         search,
@@ -136,7 +140,7 @@ export default function Product() {
         sortDirection
       );
       setItems(content);
-      setTotalPages(newTotalPages);
+      setTotalPages(newPageInfo.totalPages);
       setCurrentPage(0);
 
       toast.success("Thêm sản phẩm mới thành công!");
@@ -188,13 +192,15 @@ export default function Product() {
             />
           </div>
 
-          <button
-            className="bg-[#1E3A8A] text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:bg-[#163172] transition-all duration-300 flex items-center gap-2 transform hover:scale-105"
-            onClick={() => setCreateModal(true)}
-          >
-            <AiOutlinePlus className="text-xl" />
-            Thêm Mới
-          </button>
+          {isAdmin && (
+            <button
+              className="bg-[#1E3A8A] text-white px-6 py-2.5 rounded-lg font-semibold shadow-md hover:bg-[#163172] transition-all duration-300 flex items-center gap-2 transform hover:scale-105"
+              onClick={() => setCreateModal(true)}
+            >
+              <AiOutlinePlus className="text-xl" />
+              Thêm Mới
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -249,28 +255,32 @@ export default function Product() {
                         >
                           <AiOutlineEye size={18} />
                         </button>
-                        <button
-                          className="w-8 h-8 rounded-full bg-yellow-50 text-yellow-600 hover:bg-yellow-100 hover:text-yellow-800 flex items-center justify-center transition-all duration-200 shadow-sm border border-yellow-200"
-                          onClick={() => handleUpdateProduct(item)}
-                          title="Chỉnh sửa"
-                        >
-                          <AiOutlineEdit size={18} />
-                        </button>
+                        {isAdmin && (
+                          <>
+                            <button
+                              className="w-8 h-8 rounded-full bg-yellow-50 text-yellow-600 hover:bg-yellow-100 hover:text-yellow-800 flex items-center justify-center transition-all duration-200 shadow-sm border border-yellow-200"
+                              onClick={() => handleUpdateProduct(item)}
+                              title="Chỉnh sửa"
+                            >
+                              <AiOutlineEdit size={18} />
+                            </button>
 
-                        <Switch
-                          onChange={() => handleToggleStatus(item.id)}
-                          checked={item.status}
-                          height={20}
-                          width={44}
-                          offColor="#E5E7EB"
-                          onColor="#10B981"
-                          offHandleColor="#9CA3AF"
-                          onHandleColor="#FFFFFF"
-                          boxShadow="0px 1px 3px rgba(0, 0, 0, 0.3)"
-                          activeBoxShadow="0px 0px 1px 2px rgba(0, 0, 0, 0.2)"
-                          uncheckedIcon={false}
-                          checkedIcon={false}
-                        />
+                            <Switch
+                              onChange={() => handleToggleStatus(item.id)}
+                              checked={item.status}
+                              height={20}
+                              width={44}
+                              offColor="#E5E7EB"
+                              onColor="#10B981"
+                              offHandleColor="#9CA3AF"
+                              onHandleColor="#FFFFFF"
+                              boxShadow="0px 1px 3px rgba(0, 0, 0, 0.3)"
+                              activeBoxShadow="0px 0px 1px 2px rgba(0, 0, 0, 0.2)"
+                              uncheckedIcon={false}
+                              checkedIcon={false}
+                            />
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -288,46 +298,48 @@ export default function Product() {
         </div>
 
         {/* Pagination */}
-        <div className="flex flex-col md:flex-row items-center justify-between mt-6 bg-white p-4 rounded-lg shadow-sm text-gray-700">
-          <div className="flex items-center gap-3 mb-4 md:mb-0">
-            <span className="text-sm font-medium text-gray-600">Hiển thị</span>
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-3 items-center gap-4 mt-6 rounded-xl shadow-sm">
+          {/* Left: Size Picker */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Hiển thị:</span>
             <select
-              id="entries"
-              className="border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-[#1E3A8A] focus:outline-none bg-white shadow-sm text-sm"
+              name="size"
               value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(0);
+              }}
+              className="text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 transition-all cursor-pointer hover:border-[#1E3A8A]"
             >
-              {[5, 10, 20].map((size) => (
-                <option key={size} value={size}>
-                  {size} hàng
-                </option>
-              ))}
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              className={`px-4 py-2 border rounded-md text-sm font-medium transition-all duration-200 ${currentPage === 0
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white text-gray-700 hover:bg-gray-50 hover:text-[#1E3A8A] hover:border-[#1E3A8A] shadow-sm transform active:scale-95"
-                }`}
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 0}
-            >
-              Trước
-            </button>
-            <span className="text-sm font-semibold px-4 text-[#1E3A8A]">
-              Trang {currentPage + 1} / {totalPages || 1}
+          {/* Center: Page Info */}
+          <div className="flex justify-center">
+            <span className="text-sm font-medium text-gray-500 bg-gray-100 px-4 py-1.5 rounded-xl border border-gray-200 shadow-sm whitespace-nowrap">
+              Trang <span className="text-[#1E3A8A] font-bold mx-1">{currentPage + 1}</span> của <span className="font-bold mx-1">{totalPages || 1}</span>
             </span>
+          </div>
+
+          {/* Right: Navigation Buttons */}
+          <div className="flex justify-end gap-2">
             <button
-              className={`px-4 py-2 border rounded-md text-sm font-medium transition-all duration-200 ${currentPage === totalPages - 1 || totalPages === 0
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-white text-gray-700 hover:bg-gray-50 hover:text-[#1E3A8A] hover:border-[#1E3A8A] shadow-sm transform active:scale-95"
-                }`}
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages - 1 || totalPages === 0}
+              disabled={currentPage === 0}
+              onClick={() => handlePageChange(currentPage - 1)}
+              className="px-6 py-2 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2"
             >
-              Sau
+              <FaChevronLeft size={12} /> Trước
+            </button>
+            <button
+              disabled={currentPage >= (totalPages - 1) || totalPages <= 1}
+              onClick={() => handlePageChange(currentPage + 1)}
+              className="px-6 py-2 text-sm font-bold text-white bg-[#1E3A8A] rounded-xl hover:bg-[#163172] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-[#1E3A8A]/20 flex items-center gap-2"
+            >
+              Sau <FaChevronRight size={12} />
             </button>
           </div>
         </div>

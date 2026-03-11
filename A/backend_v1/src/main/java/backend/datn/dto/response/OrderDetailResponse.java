@@ -24,6 +24,8 @@ public class OrderDetailResponse implements Serializable {
 
     private BigDecimal price;
 
+    private BigDecimal importPrice;
+
     private Integer quantity;
 
 }

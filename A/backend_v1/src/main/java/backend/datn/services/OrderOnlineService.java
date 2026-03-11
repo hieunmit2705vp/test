@@ -24,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -81,24 +80,29 @@ public class OrderOnlineService {
         List<OrderOnlineDetail> orderDetails = processOrderOnlineDetails(orderOnlineRequest.getOrderOnlineDetails(),
                 order);
 
-        // Tính tổng tiền hàng
-        BigDecimal totalAmount = orderDetails.stream()
+        // Tính tổng số lượng và tổng tiền hàng (chưa voucher)
+        int totalAmountCount = orderDetails.stream()
+                .mapToInt(OrderOnlineDetail::getQuantity)
+                .sum();
+        order.setTotalAmount(totalAmountCount);
+
+        BigDecimal originalTotal = orderDetails.stream()
                 .map(od -> od.getPrice().multiply(BigDecimal.valueOf(od.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        order.setTotalAmount(totalAmount);
+        order.setOriginalTotal(originalTotal);
 
         // Xử lý voucher nếu có
         Voucher voucher = null;
         if (orderOnlineRequest.getVoucherId() != null) {
             int voucherId = Integer.parseInt(orderOnlineRequest.getVoucherId());
-            if (checkVoucher(voucherId, totalAmount)) {
+            if (checkVoucher(voucherId, originalTotal)) {
                 voucher = voucherRepository.findById(voucherId).orElse(null);
             }
         }
         order.setVoucher(voucher);
 
-        // Tính tổng tiền sau giảm giá
-        BigDecimal totalBill = calculateTotal(totalAmount, voucher, order.getShipfee());
+        // Tính tổng tiền sau giảm giá và phí ship
+        BigDecimal totalBill = calculateTotal(originalTotal, voucher, order.getShipfee());
         order.setTotalBill(totalBill);
 
         // Cập nhật order
@@ -150,6 +154,8 @@ public class OrderOnlineService {
             detail.setProductDetail(productDetail);
             detail.setQuantity(detailRequest.getQuantity());
             detail.setPrice(salePrice);
+            detail.setImportPrice(productDetail.getImportPrice() != null ? 
+                    productDetail.getImportPrice() : BigDecimal.ZERO);
             detail.setOrder(order);
 
             return detail;

@@ -1,16 +1,19 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import VoucherServices from "../../services/VoucherServices";
 import ProductService from "../../services/ProductService";
 import BrandService from "../../services/BrandService";
-import { FaFire, FaStar, FaTrophy, FaArrowRight, FaShoppingCart, FaCreditCard, FaCheckCircle } from "react-icons/fa";
+import { FaFire, FaStar, FaTrophy, FaArrowRight, FaShoppingCart, FaCheckCircle } from "react-icons/fa";
+import heroBannerAsset from "../../assets/Black and White Vintage Illustration Men's Fashion Banner.png";
+import tt1 from "../../assets/tt1.jpg";
+import tt2 from "../../assets/tt2.webp";
+import tt3 from "../../assets/tt3jpg.jpg";
+import tt5 from "../../assets/tt5.jpg";
 
 const formatCurrency = (amount) => {
   return amount ? amount.toLocaleString("vi-VN") + "₫" : "Liên hệ";
 };
 
 const Home = () => {
-  const [vouchers, setVouchers] = useState([]);
   const [brands, setBrands] = useState([]);
   const [products, setProducts] = useState([]);
   const [bestSellingProducts, setBestSellingProducts] = useState([]);
@@ -22,15 +25,13 @@ const Home = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [vouchersRes, brandsRes, productsRes, bestSellingRes, latestRes] = await Promise.all([
-          VoucherServices.getAllVouchers(),
+        const [brandsRes, productsRes, bestSellingRes, latestRes] = await Promise.all([
           BrandService.getAllBrands(),
           ProductService.getFilteredProducts({ page: 0, size: 10, sort: "createdDate,desc" }),
           ProductService.getFilteredProducts({ page: 0, size: 5, sort: "quantitySaled,desc" }),
           ProductService.getFilteredProducts({ page: 0, size: 4, sort: "createdDate,desc" })
         ]);
 
-        setVouchers(vouchersRes.content?.slice(0, 4) || []);
         setBrands(brandsRes?.content || []);
         setProducts(productsRes?.content || productsRes?.data || []);
         setBestSellingProducts(bestSellingRes?.content || bestSellingRes?.data || []);
@@ -69,28 +70,28 @@ const Home = () => {
   };
 
   // Improved Image Paths & Content
-  const heroBanner = "/src/assets/Black and White Vintage Illustration Men's Fashion Banner.png";
+  const heroBanner = heroBannerAsset;
   const newsItems = [
     {
-      img: "/src/assets/tt1.jpg",
+      img: tt1,
       title: "7 Kiểu Áo Sơ Mi Nam Không Bao Giờ Lỗi Thời",
       desc: "Những món đồ kinh điển như sơ mi cài nút, polo, và flannel không bao giờ lỗi mốt...",
       date: "21/02/2024"
     },
     {
-      img: "/src/assets/tt2.webp",
+      img: tt2,
       title: "Phong Cách 'The Boy' Trong Phim Thời Trang",
       desc: "Áo đặc trưng của chúng tôi gây chú ý trong một bộ phim gần đây...",
       date: "20/02/2024"
     },
     {
-      img: "/src/assets/tt3jpg.jpg",
+      img: tt3,
       title: "Phong Cách Anh Quốc Thanh Lịch",
       desc: "Sự tinh tế nhẹ nhàng với áo may đo của chúng tôi, lấy cảm hứng từ phong cách Anh Quốc...",
       date: "19/02/2024"
     },
     {
-      img: "/src/assets/tt5.jpg",
+      img: tt5,
       title: "Tủ Đồ Tối Giản: Chìa Khóa Chọn Áo Thông Minh",
       desc: "Xây dựng bộ sưu tập áo đa năng với The Boy—phong cách, tiết kiệm...",
       date: "18/02/2024"
@@ -142,62 +143,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 2. Exclusive Vouchers */}
-      <section className="py-16 bg-white relative">
-        <div className="container mx-auto px-6 max-w-7xl">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-[#1E3A8A] mb-3 relative inline-block">
-              Ưu Đãi Đặc Quyền
-              <span className="absolute bottom-0 left-0 w-full h-1 bg-yellow-400 rounded-full transform scale-x-50"></span>
-            </h2>
-            <p className="text-gray-500 mt-2">Dành riêng cho khách hàng thân thiết của The Boys</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {vouchers.map((voucher) => (
-              <div
-                key={voucher.id}
-                className="relative group bg-gradient-to-br from-[#1E3A8A] to-blue-900 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
-              >
-                {/* Decorative Circles */}
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
-                <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-blue-400/20 rounded-full blur-xl"></div>
-
-                <div className="relative z-10 flex flex-col h-full justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold border border-white/20">
-                        VOUCHER
-                      </div>
-                      <FaCreditCard className="text-white/50 text-2xl" />
-                    </div>
-                    <h3 className="text-2xl font-bold mb-1">{voucher.voucherCode}</h3>
-                    <p className="text-blue-200 text-sm mb-4 line-clamp-1">{voucher.voucherName}</p>
-
-                    <div className="bg-black/20 p-3 rounded-xl mb-4 text-center">
-                      <p className="text-xs text-blue-200 mb-1">Giảm Giá</p>
-                      <p className="text-3xl font-bold text-yellow-400">{voucher.reducedPercent}%</p>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-white/10">
-                    <p className="text-xs text-blue-200 flex justify-between mb-1">
-                      <span>Đơn tối thiểu:</span>
-                      <span className="font-semibold text-white">{formatCurrency(voucher.minCondition)}</span>
-                    </p>
-                    <p className="text-xs text-blue-200 flex justify-between">
-                      <span>Hết hạn:</span>
-                      <span className="font-semibold text-white">{new Date(voucher.endDate).toLocaleDateString("vi-VN")}</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Hot Products Slider with Snap Scroll */}
+      {/* 2. Hot Products Slider with Snap Scroll */}
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-6 max-w-7xl">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">

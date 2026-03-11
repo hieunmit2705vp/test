@@ -49,6 +49,7 @@ function AppRouter() {
               )
             }
           >
+            <Route index element={<Navigate to="dashboard" replace />} />
             {adminRoutes.map((route, index) => (
               <Route
                 key={index}

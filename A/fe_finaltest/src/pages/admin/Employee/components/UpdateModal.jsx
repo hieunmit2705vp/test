@@ -28,7 +28,7 @@ const UpdateModal = ({ isOpen, setUpdateModal, employee, fetchEmployees }) => {
         setAvatar(localImageUrl);
 
         try {
-            const uploadedImageUrl = await UploadFileService.uploadProductImage(file);
+            const uploadedImageUrl = await UploadFileService.uploadEmployeeImage(file);
             setUpdatedEmployee(prev => ({ ...prev, photo: uploadedImageUrl }));
             toast.success("Tải ảnh thành công!");
         } catch (error) {
@@ -36,9 +36,6 @@ const UpdateModal = ({ isOpen, setUpdateModal, employee, fetchEmployees }) => {
             toast.error("Không thể tải ảnh lên!");
         }
     };
-
-
-    const handleDoubleClick = () => fileInputRef.current.click();
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -79,32 +76,43 @@ const UpdateModal = ({ isOpen, setUpdateModal, employee, fetchEmployees }) => {
                 </div>
 
                 <div className="p-8">
-                    {/* Avatar Section */}
-                    <div className="flex flex-col items-center mb-6">
-                        <div className="relative group">
-                            <div
-                                className="w-32 h-32 rounded-full border-4 border-[#1E3A8A] overflow-hidden cursor-pointer transition-all duration-300 hover:border-[#2563EB] hover:shadow-xl"
-                                onDoubleClick={handleDoubleClick}
-                            >
+                    {/* Avatar Section - Product Style */}
+                    <div className="flex flex-col mb-6">
+                        <label className="text-sm font-semibold text-gray-700 mb-2">Ảnh nhân viên</label>
+                        <div className="mt-2 bg-blue-50 p-4 rounded-xl border-2 border-dashed border-blue-300 relative hover:bg-blue-100 transition-all duration-300">
+                            <label className="cursor-pointer block">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleAvatarUpload(e.target.files[0])}
+                                    className="hidden"
+                                />
                                 {avatar ? (
-                                    <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                                    <div className="relative group h-48 w-full">
+                                        <img
+                                            src={avatar}
+                                            alt="Ảnh đã chọn"
+                                            className="h-full w-full object-contain rounded-lg"
+                                        />
+                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg flex items-center justify-center transition-all duration-300">
+                                            <p className="text-white opacity-0 group-hover:opacity-100 font-bold bg-black bg-opacity-50 px-3 py-1 rounded-full">Thay đổi</p>
+                                        </div>
+                                    </div>
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100">
-                                        <svg className="w-16 h-16 text-[#1E3A8A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                        </svg>
+                                    <div className="flex flex-col items-center justify-center h-48">
+                                        <div className="bg-blue-100 p-4 rounded-full mb-3">
+                                            <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        <p className="text-gray-600 font-medium">
+                                            Thả hình ảnh nhân viên vào đây, hoặc <span className="text-blue-600 font-bold">duyệt</span>
+                                        </p>
+                                        <p className="text-gray-400 text-xs mt-1">Hỗ trợ: JPG, PNG, WEBP (Tối đa 5MB)</p>
                                     </div>
                                 )}
-                            </div>
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-full flex items-center justify-center transition-all duration-300">
-                                <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                            </div>
+                            </label>
                         </div>
-                        <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => handleAvatarUpload(e.target.files[0])} />
-                        <p className="text-sm text-gray-500 mt-2">Double-click để thay đổi ảnh</p>
                     </div>
 
                     {/* Form Fields */}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
 import { AiOutlineEye, AiFillCaretUp, AiFillCaretDown, AiOutlineEdit } from "react-icons/ai";
 import { TiLockOpen } from "react-icons/ti";
 import Switch from "react-switch";
@@ -9,6 +10,8 @@ import CreateModal from './components/CreateModal';
 import UpdatePasswordModal from './components/UpdatePasswordModal';
 
 export default function Customer() {
+  const { role } = useSelector((state) => state.user);
+  const isAdmin = role === "ADMIN";
   const [customers, setCustomers] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -30,8 +33,8 @@ export default function Customer() {
         sortBy,
         sortDir
       );
-      setCustomers(response.content);
-      setTotalPages(response.totalPages);
+      setCustomers(response.content || []);
+      setTotalPages(response.page?.totalPages || 0);
     } catch (error) {
       console.error("Error fetching customers:", error);
       toast.error("Không thể tải danh sách khách hàng. Vui lòng thử lại!");
@@ -53,6 +56,7 @@ export default function Customer() {
 
   const handleSearch = (event) => {
     setSearch(event.target.value);
+    setCurrentPage(0);
   };
 
   const handleNextPage = () => {
@@ -113,41 +117,43 @@ export default function Customer() {
             {item.status ? "Kích hoạt" : "Ngừng hoạt động"}
           </span>
         </td>
-        <td className="px-3 py-2">
-          <div className="flex items-center justify-center space-x-2">
-            <button
-              className="p-2 text-[#1E3A8A] hover:bg-blue-100 rounded-lg transition-all duration-200"
-              onClick={() => handleUpdateCustomer(item)}
-              title="Chỉnh sửa"
-            >
-              <AiOutlineEdit size={18} />
-            </button>
-            <div className="inline-flex">
-              <Switch
-                onChange={() => handleToggleStatus(item.id)}
-                checked={Boolean(item.status)}
-                offColor="#E5E7EB"
-                onColor="#1E3A8A"
-                offHandleColor="#9CA3AF"
-                onHandleColor="#FFFFFF"
-                uncheckedIcon={false}
-                checkedIcon={false}
-                height={20}
-                width={40}
-              />
+        {isAdmin && (
+          <td className="px-3 py-2">
+            <div className="flex items-center justify-center space-x-2">
+              <button
+                className="p-2 text-[#1E3A8A] hover:bg-blue-100 rounded-lg transition-all duration-200"
+                onClick={() => handleUpdateCustomer(item)}
+                title="Chỉnh sửa"
+              >
+                <AiOutlineEdit size={18} />
+              </button>
+              <div className="inline-flex">
+                <Switch
+                  onChange={() => handleToggleStatus(item.id)}
+                  checked={Boolean(item.status)}
+                  offColor="#E5E7EB"
+                  onColor="#1E3A8A"
+                  offHandleColor="#9CA3AF"
+                  onHandleColor="#FFFFFF"
+                  uncheckedIcon={false}
+                  checkedIcon={false}
+                  height={20}
+                  width={40}
+                />
+              </div>
+              <button
+                title="Đổi mật khẩu"
+                className="p-2 text-red-500 hover:bg-red-100 rounded-lg transition-all duration-200"
+                onClick={() => {
+                  setCurrentCustomer(item);
+                  setPasswordModal(true);
+                }}
+              >
+                <TiLockOpen size={18} />
+              </button>
             </div>
-            <button
-              title="Đổi mật khẩu"
-              className="p-2 text-red-500 hover:bg-red-100 rounded-lg transition-all duration-200"
-              onClick={() => {
-                setCurrentCustomer(item);
-                setPasswordModal(true);
-              }}
-            >
-              <TiLockOpen size={18} />
-            </button>
-          </div>
-        </td>
+          </td>
+        )}
       </tr>
     ));
   };
@@ -197,15 +203,17 @@ export default function Customer() {
           </svg>
         </div>
 
-        <button
-          className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] text-white px-6 py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center"
-          onClick={() => setCreateModal(true)}
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Thêm khách hàng
-        </button>
+        {isAdmin && (
+          <button
+            className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB] text-white px-6 py-2.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center"
+            onClick={() => setCreateModal(true)}
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Thêm khách hàng
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
@@ -221,7 +229,7 @@ export default function Customer() {
                 {renderSortableHeader("Email", "email")}
                 {renderSortableHeader("Số điện thoại", "phone")}
                 {renderSortableHeader("Trạng thái", "status")}
-                <th className="px-3 py-2 text-center font-semibold text-sm">Hành động</th>
+                {isAdmin && <th className="px-3 py-2 text-center font-semibold text-sm">Hành động</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">{renderRows()}</tbody>
@@ -238,45 +246,71 @@ export default function Customer() {
         )}
       </div>
 
-      <div className="flex justify-between items-center mt-6 bg-white rounded-xl shadow-lg px-6 py-4 border border-gray-200">
-        <div className="flex items-center gap-3">
-          <label htmlFor="entries" className="text-sm font-medium text-gray-700">
-            Hiển thị
-          </label>
-          <select
-            id="entries"
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent transition-all"
-            value={pageSize}
-            onChange={(e) => setPageSize(e.target.value)}
-          >
-            <option value="5">5</option>
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-          </select>
-          <span className="text-sm text-gray-700">khách hàng</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-[#1E3A8A] hover:text-white hover:border-[#1E3A8A] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            onClick={handlePrevPage}
-            disabled={currentPage === 0}
-          >
-            ← Trước
-          </button>
-
-          <div className="px-4 py-2 bg-[#1E3A8A] text-white rounded-lg font-semibold text-sm">
-            Trang {currentPage + 1} / {totalPages || 1}
+      <div className="bg-white p-6 rounded-2xl shadow-lg mt-6 border border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-6">
+          {/* Bên trái: Hiển thị */}
+          <div className="flex items-center justify-center md:justify-start gap-3">
+            <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Hiển thị</span>
+            <select
+              id="entries"
+              className="bg-gray-50 border border-gray-300 rounded-xl text-sm font-bold px-4 py-2 focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent transition-all cursor-pointer shadow-sm"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(0);
+              }}
+            >
+              {[5, 10, 20, 50].map((size) => (
+                <option key={size} value={size}>
+                  {size} khách hàng
+                </option>
+              ))}
+            </select>
           </div>
 
-          <button
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-[#1E3A8A] hover:text-white hover:border-[#1E3A8A] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            onClick={handleNextPage}
-            disabled={currentPage === totalPages - 1}
-          >
-            Sau →
-          </button>
+          {/* Ở giữa: Thông tin trang */}
+          <div className="flex justify-center">
+            <span className="text-sm font-bold text-[#1E3A8A] bg-blue-50 px-4 py-2 rounded-xl border border-blue-100 shadow-sm">
+              Trang <span className="text-blue-700">{currentPage + 1}</span> / {totalPages || 1}
+            </span>
+          </div>
+
+          {/* Bên phải: Nút điều hướng */}
+          <div className="flex items-center justify-center md:justify-end gap-2 font-bold">
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-600 border border-gray-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm"
+              onClick={() => setCurrentPage(0)}
+              disabled={currentPage === 0}
+              title="Trang đầu"
+            >
+              &laquo;
+            </button>
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-600 border border-gray-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm"
+              onClick={handlePrevPage}
+              disabled={currentPage === 0}
+              title="Trước"
+            >
+              &lt;
+            </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-600 border border-gray-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages - 1 || totalPages === 0}
+              title="Sau"
+            >
+              &gt;
+            </button>
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-600 border border-gray-200 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm"
+              onClick={() => setCurrentPage(totalPages - 1)}
+              disabled={currentPage === totalPages - 1 || totalPages === 0}
+              title="Trang cuối"
+            >
+              &raquo;
+            </button>
+          </div>
         </div>
       </div>
 

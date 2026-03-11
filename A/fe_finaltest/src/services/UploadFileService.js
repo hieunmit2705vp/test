@@ -39,10 +39,10 @@ const UploadFileService = {
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
 
-      console.log(`Ảnh sản phẩm đã tải lên: ${downloadURL}`);
+      console.log(`Ảnh nhân viên đã tải lên: ${downloadURL}`);
       return downloadURL;
     } catch (error) {
-      console.error("Lỗi khi tải ảnh sản phẩm lên:", error);
+      console.error("Lỗi khi tải ảnh nhân viên lên:", error);
       throw error;
     }
   },

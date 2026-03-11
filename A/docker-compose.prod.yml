@@ -1,0 +1,38 @@
+# ============================================================
+# docker-compose dành cho VPS - dùng image có sẵn (không build)
+# Copy file này lên VPS cùng với 2 file .tar
+# ============================================================
+services:
+  backend:
+    image: datn_backend:latest
+    container_name: datn_backend
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST:-host.docker.internal}:${DB_PORT:-3306}/${DB_NAME:-testdb}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Ho_Chi_Minh
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-root}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}
+      SPRING_PROFILES_ACTIVE: docker
+    ports:
+      - "8080:8080"
+    networks:
+      - datn_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    image: datn_frontend:latest
+    container_name: datn_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - datn_network
+
+networks:
+  datn_network:
+    name: datn_network
+    driver: bridge

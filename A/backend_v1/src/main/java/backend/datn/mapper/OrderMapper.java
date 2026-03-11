@@ -45,6 +45,8 @@ public class OrderMapper {
                 .id(orderDetail.getId() != null ? orderDetail.getId() : 0) // Sửa vì id trong OrderDetail đã là Integer
                 .productDetail(orderDetail.getProductDetail() != null ? ProductDetailMapper.toProductDetailResponse(orderDetail.getProductDetail()) : null)
                 .quantity(orderDetail.getQuantity() != null ? orderDetail.getQuantity() : 0)
+                .price(orderDetail.getPrice())
+                .importPrice(orderDetail.getImportPrice())
                 .build();
     }
 

@@ -130,6 +130,7 @@ public class OrderService {
                 finalPrice = finalPrice.multiply(discountPercent);
             }
 
+            orderDetail.setImportPrice(productDetail.getImportPrice());
             totalBill = totalBill.add(finalPrice.multiply(BigDecimal.valueOf(orderDetail.getQuantity())));
             totalAmount += orderDetail.getQuantity();
             orderDetail.setOrder(order);
@@ -137,12 +138,12 @@ public class OrderService {
 
         if (voucher != null) {
             validateVoucher(voucher, totalBill);
-            BigDecimal discount = totalBill
+            BigDecimal discountValue = totalBill
                     .multiply(BigDecimal.valueOf(voucher.getReducedPercent()).divide(BigDecimal.valueOf(100)));
-            if (discount.compareTo(voucher.getMaxDiscount()) > 0) {
-                discount = voucher.getMaxDiscount();
+            if (discountValue.compareTo(voucher.getMaxDiscount()) > 0) {
+                discountValue = voucher.getMaxDiscount();
             }
-            totalBill = totalBill.subtract(discount).max(BigDecimal.ZERO);
+            totalBill = totalBill.subtract(discountValue).max(BigDecimal.ZERO);
         }
 
         order.setTotalBill(totalBill);

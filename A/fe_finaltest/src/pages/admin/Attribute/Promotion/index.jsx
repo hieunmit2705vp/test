@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useSelector } from "react-redux";
 import PromotionService from "../../../../services/PromotionServices";
 import { toast } from "react-toastify";
 import { AiOutlineEdit, AiOutlinePlus, AiOutlineSearch, AiOutlineFilter, AiOutlineCalendar } from "react-icons/ai";
@@ -18,6 +19,8 @@ const formatDateTime = (date) => {
 };
 
 export default function Promotion() {
+  const { role } = useSelector((state) => state.user);
+  const isAdmin = role === "ADMIN";
   const [promotions, setPromotions] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -43,7 +46,7 @@ export default function Promotion() {
         ? formatDateTime(new Date(dateRange.end))
         : null;
 
-      const { content, totalPages } = await PromotionService.getAllPromotions(
+      const response = await PromotionService.getAllPromotions(
         search || "",
         currentPage,
         pageSize,
@@ -60,8 +63,8 @@ export default function Promotion() {
             : null
       );
 
-      setPromotions(content || []);
-      setTotalPages(totalPages || 1);
+      setPromotions(response.content || []);
+      setTotalPages(response.page?.totalPages || 1);
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu khuyến mãi", error);
       toast.error("Lỗi khi tải dữ liệu khuyến mãi");
@@ -206,12 +209,14 @@ export default function Promotion() {
               >
                 Đặt lại
               </button>
-              <button
-                className="flex-1 bg-[#1E3A8A] text-white px-4 py-2.5 rounded-lg hover:bg-[#163172] transition-all duration-300 font-medium shadow-md flex items-center justify-center gap-2"
-                onClick={() => setIsCreateModalOpen(true)}
-              >
-                <AiOutlinePlus /> Thêm Mới
-              </button>
+              {isAdmin && (
+                <button
+                  className="flex-1 bg-[#1E3A8A] text-white px-4 py-2.5 rounded-lg hover:bg-[#163172] transition-all duration-300 font-medium shadow-md flex items-center justify-center gap-2"
+                  onClick={() => setIsCreateModalOpen(true)}
+                >
+                  <AiOutlinePlus /> Thêm Mới
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -267,22 +272,34 @@ export default function Promotion() {
                       </td>
                       <td className="py-4 px-6 text-center">
                         <span
-                          className={`py-1 px-3 rounded-full text-xs font-bold uppercase tracking-wide border ${item.status
-                              ? "bg-blue-100 text-blue-700 border-blue-200"
-                              : "bg-gray-100 text-gray-500 border-gray-200"
+                          className={`py-1 px-3 rounded-full text-xs font-bold uppercase tracking-wide border ${!item.status
+                              ? "bg-gray-100 text-gray-500 border-gray-200"
+                              : new Date() > new Date(item.endDate)
+                                ? "bg-red-100 text-red-700 border-red-200"
+                                : new Date() < new Date(item.startDate)
+                                  ? "bg-yellow-100 text-yellow-700 border-yellow-200"
+                                  : "bg-blue-100 text-blue-700 border-blue-200"
                             }`}
                         >
-                          {item.status ? "Kích hoạt" : "Vô hiệu"}
+                          {!item.status
+                            ? "Vô hiệu"
+                            : new Date() > new Date(item.endDate)
+                              ? "Hết hạn"
+                              : new Date() < new Date(item.startDate)
+                                ? "Sắp diễn ra"
+                                : "Đang diễn ra"}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-center">
-                        <button
-                          className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-800 flex items-center justify-center transition-all duration-200 shadow-sm border border-blue-200 mx-auto"
-                          onClick={() => handleUpdatePromotion(item)}
-                          title="Chỉnh sửa"
-                        >
-                          <AiOutlineEdit size={20} />
-                        </button>
+                        {isAdmin && (
+                          <button
+                            className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-800 flex items-center justify-center transition-all duration-200 shadow-sm border border-blue-200 mx-auto"
+                            onClick={() => handleUpdatePromotion(item)}
+                            title="Chỉnh sửa"
+                          >
+                            <AiOutlineEdit size={20} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

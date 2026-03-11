@@ -16,7 +16,8 @@ public class OrderOnlineResponse  {
     CustomerResponse customer;
     String orderCode;
     LocalDateTime createDate;
-    BigDecimal totalAmount;
+    Integer totalAmount;
+    BigDecimal originalTotal;
     BigDecimal totalBill;
     Integer paymentMethod;
     Integer statusOrder;

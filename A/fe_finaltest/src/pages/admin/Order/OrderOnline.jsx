@@ -18,7 +18,7 @@ const orderStatusMap = {
   1: "Chờ thanh toán",
   2: "Đã xác nhận",
   3: "Đang giao hàng",
-  4: "Giao hàng không thành công",
+  4: "Giao hàng thất bại",
   5: "Hoàn thành",
 };
 
@@ -58,17 +58,17 @@ export default function OnlineOrder() {
 
   useEffect(() => {
     fetchOrders();
-  }, [currentPage, pageSize, sortConfig]);
+  }, [currentPage, pageSize, sortConfig, search]);
 
   useEffect(() => {
     filterOrders();
-  }, [selectedStatus, orders, search]);
+  }, [selectedStatus, orders]);
 
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
       const data = await OrderService.getOnlineOrders(
-        "",
+        search,
         currentPage - 1,
         pageSize,
         sortConfig.key,
@@ -90,20 +90,6 @@ export default function OnlineOrder() {
     if (selectedStatus !== null) {
       filtered = filtered.filter(
         (order) => order.statusOrder.toString() === selectedStatus
-      );
-    }
-    if (search.trim()) {
-      const searchTerm = search.toLowerCase();
-      filtered = filtered.filter((order) =>
-        Object.values(order).some((value) => {
-          if (value !== null && value !== undefined) {
-            if (typeof value === "object" && value.fullname) {
-              return value.fullname.toLowerCase().includes(searchTerm);
-            }
-            return value.toString().toLowerCase().includes(searchTerm);
-          }
-          return false;
-        })
       );
     }
     setFilteredOrders(filtered);
@@ -158,227 +144,197 @@ export default function OnlineOrder() {
   };
 
   return (
-    <div className="p-6 bg-green-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+    <div className="p-6 bg-blue-50/30 min-h-screen font-sans">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between animate-fade-in">
           <div>
-            <h1 className="text-2xl font-bold text-green-800">
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
               Quản lý đơn hàng Online
             </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Quản lý và theo dõi tất cả đơn hàng Online
+            <p className="text-slate-500 mt-2 font-medium">
+              Trung tâm điều hành và theo dõi tình trạng đơn đặt hàng trực tuyến
             </p>
           </div>
-          <div className="mt-4 md:mt-0">
+          <div className="mt-6 md:mt-0 flex gap-3">
             <button
               onClick={fetchOrders}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg shadow hover:bg-green-600 transition flex items-center"
+              className="flex items-center px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-95"
             >
-              <AiOutlineReload className="mr-2" /> Làm mới
+              <AiOutlineReload className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} /> Làm mới
             </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow mb-6 p-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-            <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <AiOutlineSearch className="h-5 w-5 text-gray-400" />
+        {/* Filters Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 transition-all duration-300 hover:shadow-md">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+            <div className="relative flex-1 group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <AiOutlineSearch className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
               </div>
               <input
                 type="text"
-                placeholder="Tìm kiếm theo mã đơn, tên khách hàng..."
+                placeholder="Tìm kiếm mã đơn, tên khách hàng..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 p-3 w-full rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="block w-full pl-11 pr-4 py-3 bg-slate-50 border-transparent rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 border border-slate-200"
               />
             </div>
-            <div className="mt-4 md:mt-0 md:ml-4 flex items-center">
+
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="px-4 py-3 border border-gray-300 rounded-lg flex items-center hover:bg-gray-50 transition"
+                className={`flex items-center px-5 py-3 rounded-xl font-semibold transition-all duration-200 ${showFilters
+                    ? "bg-blue-50 text-blue-700 border border-blue-100"
+                    : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                  }`}
               >
-                <AiOutlineFilter className="mr-2" /> Bộ lọc
+                <AiOutlineFilter className="mr-2 h-5 w-5" /> Bộ lọc trạng thái
               </button>
+
               {(selectedStatus !== null || search.trim() !== "") && (
                 <button
                   onClick={handleClearFilters}
-                  className="ml-2 px-4 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  className="px-5 py-3 text-red-600 font-semibold hover:bg-red-50 rounded-xl transition-all duration-200"
                 >
-                  Xóa bộ lọc
+                  Xóa hết
                 </button>
               )}
             </div>
           </div>
 
-          {showFilters && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">
-                Lọc theo trạng thái:
+          {/* Expanded Filters */}
+          <div className={`overflow-hidden transition-all duration-300 ${showFilters ? 'max-h-60 mt-6 opacity-100' : 'max-h-0 opacity-0'}`}>
+            <div className="pt-6 border-t border-slate-100">
+              <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">
+                Quy trình xử lý đơn hàng
               </h3>
-              <div className="flex flex-wrap gap-2">
-                {Object.keys(orderStatusMap).map((key) => (
+              <div className="flex flex-wrap gap-2.5">
+                {Object.entries(orderStatusMap).map(([key, label]) => (
                   <button
                     key={key}
                     onClick={() => handleStatusFilter(key)}
-                    className={`px-4 py-2 rounded-lg transition ${
-                      selectedStatus === key
-                        ? "bg-green-500 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
+                    className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${selectedStatus === key
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-200 scale-105"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
                   >
-                    {orderStatusMap[key]}
+                    {label}
                   </button>
                 ))}
               </div>
             </div>
-          )}
+          </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        {/* Data Table Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden transition-all duration-300 hover:shadow-md">
           {isLoading ? (
-            <div className="p-12 flex justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+            <div className="py-24 flex flex-col items-center justify-center">
+              <div className="relative">
+                <div className="h-16 w-16 rounded-full border-4 border-slate-100 border-t-blue-600 animate-spin"></div>
+              </div>
+              <p className="mt-4 text-slate-500 font-medium animate-pulse">Đang truy xuất dữ liệu...</p>
             </div>
           ) : filteredOrders.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              <p>Không tìm thấy đơn hàng Online nào</p>
+            <div className="py-24 flex flex-col items-center justify-center text-center">
+              <div className="bg-slate-50 p-6 rounded-full text-slate-300 mb-4 inline-block">
+                <AiOutlineSearch size={48} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800">Không tìm thấy đơn hàng ONLINE</h3>
+              <p className="text-slate-500 mt-2 max-w-sm px-4">Chúng tôi đã tìm khắp cơ sở dữ liệu nhưng không thấy kết quả khớp.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-green-50">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => handleSort("id")}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>STT</span>
-                        {sortConfig.key === "id" &&
-                          (sortConfig.direction === "asc" ? (
-                            <AiFillCaretUp className="text-green-500" />
-                          ) : (
-                            <AiFillCaretDown className="text-green-500" />
-                          ))}
-                      </div>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/50 border-b border-slate-100 text-left">
+                    <th className="px-6 py-4">
+                      <button
+                        onClick={() => handleSort("id")}
+                        className="flex items-center text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-blue-600 transition-colors"
+                      >
+                        STT {sortConfig.key === "id" && (sortConfig.direction === "asc" ? <AiFillCaretUp className="ml-1" /> : <AiFillCaretDown className="ml-1" />)}
+                      </button>
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      ID
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">ID</th>
+                    <th className="px-6 py-4">
+                      <button
+                        onClick={() => handleSort("orderCode")}
+                        className="flex items-center text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-blue-600 transition-colors"
+                      >
+                        Mã đơn hàng {sortConfig.key === "orderCode" && (sortConfig.direction === "asc" ? <AiFillCaretUp className="ml-1" /> : <AiFillCaretDown className="ml-1" />)}
+                      </button>
                     </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                      onClick={() => handleSort("orderCode")}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Mã đơn hàng</span>
-                        {sortConfig.key === "orderCode" &&
-                          (sortConfig.direction === "asc" ? (
-                            <AiFillCaretUp className="text-green-500" />
-                          ) : (
-                            <AiFillCaretDown className="text-green-500" />
-                          ))}
-                      </div>
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Khách hàng
-                    </th>
-                  
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Tổng tiền hàng
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Tổng tiền khách phải trả
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Tên Voucher
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Trạng thái
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Hành động
-                    </th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Khách hàng</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Tổng hàng</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Thực thu</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Voucher</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Trạng thái</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Hành động</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="divide-y divide-slate-100">
                   {filteredOrders.map((item, index) => {
-                    const discount = item.originalTotal - item.totalBill;
-
+                    const isCanceled = item.statusOrder === -1;
                     return (
                       <tr
                         key={item.id}
-                        className="hover:bg-green-50 transition-colors"
+                        className="group hover:bg-slate-50/80 transition-all duration-200"
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {index + 1}
+                        <td className="px-6 py-4 text-sm text-slate-500 font-medium whitespace-nowrap">
+                          {(currentPage - 1) * pageSize + index + 1}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-bold">
+                        <td className="px-6 py-4 text-sm font-semibold text-slate-400 whitespace-nowrap">
                           #{item.id}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
+                          <span className="inline-flex items-center px-3 py-1 rounded-lg bg-blue-50 text-blue-700 text-sm font-bold border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
                             {item.orderCode}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {item.customer?.fullname || "N/A"}
-                          </div>
-                        </td>
-                      
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-700 font-medium">
-                          {formatCurrency(item.totalAmount)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-700 font-medium">
-                          {formatCurrency(item.totalBill)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {item.voucher?.voucherName || "Không Có Voucher"}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className={getStatusClass(item.statusOrder)}>
-                            {orderStatusMap[item.statusOrder.toString()] ||
-                              "Không xác định"}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex justify-center space-x-2">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-bold text-slate-800">{item.customer?.fullname || "Ẩn danh"}</span>
+                        </td>
+                        <td className="px-6 py-4 text-right whitespace-nowrap">
+                          <span className="text-sm font-bold text-slate-400 opacity-60">
+                            {formatCurrency(item.originalTotal)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right whitespace-nowrap">
+                          <span className="text-sm font-extrabold text-slate-900 bg-slate-100 px-3 py-1 rounded-lg group-hover:bg-white transition-colors">
+                            {formatCurrency(item.totalBill)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <span className="text-xs font-bold text-slate-500 max-w-[120px] truncate" title={item.voucher?.voucherName}>
+                              {item.voucher?.voucherName || "---"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                          <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest border transition-all duration-300 ${item.statusOrder === 5 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                              item.statusOrder === -1 ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                                item.statusOrder === 0 ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                  item.statusOrder === 3 ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                    'bg-slate-50 text-slate-600 border-slate-200'
+                            }`}>
+                            {orderStatusMap[item.statusOrder.toString()] || "N/A"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                          <div className="flex justify-center">
                             <button
-                              className="text-green-500 hover:text-green-700 p-1 rounded-full hover:bg-green-100 transition-colors"
-                              onClick={() =>
-                                navigate(
-                                  `/admin/order/online/${item.id}/details`
-                                )
-                              }
-                              title="Xem chi tiết"
+                              className="flex items-center justify-center h-10 w-10 text-blue-500 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-xl transition-all duration-300 shadow-sm"
+                              onClick={() => navigate(`/admin/order/online/${item.id}/details`)}
+                              title="Chi tiết đơn hàng"
                             >
-                              <AiOutlineEye size={20} />
+                              <AiOutlineEye size={22} />
                             </button>
                           </div>
                         </td>
@@ -391,81 +347,79 @@ export default function OnlineOrder() {
           )}
         </div>
 
+        {/* Pagination Card */}
         {filteredOrders.length > 0 && (
-          <div className="bg-white p-4 rounded-lg shadow mt-6">
-            <div className="flex flex-wrap items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-700">Hiển thị:</span>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-slide-up">
+            <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-6">
+              {/* Bên trái: Hiển thị */}
+              <div className="flex items-center justify-center md:justify-start gap-3">
+                <span className="text-sm font-bold text-slate-500">Hiển thị</span>
                 <select
                   value={pageSize}
                   onChange={handlePageSizeChange}
-                  className="border border-gray-300 rounded-md text-sm p-2 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="bg-slate-50 border-none ring-1 ring-slate-200 rounded-xl text-sm font-bold p-2 focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
                 >
                   <option value="5">5</option>
                   <option value="10">10</option>
                   <option value="20">20</option>
                   <option value="50">50</option>
                 </select>
-                <span className="text-sm text-gray-700 hidden sm:inline">
-                  Trang <span className="font-medium">{currentPage}</span> /{" "}
-                  <span className="font-medium">{totalPages}</span>
+              </div>
+
+              {/* Ở giữa: Thông tin trang */}
+              <div className="flex justify-center flex-1">
+                <span className="text-sm font-bold text-[#1E3A8A] bg-blue-50 px-4 py-2 rounded-xl border border-blue-100 shadow-sm">
+                  Trang <span className="text-blue-700">{currentPage}</span> / {totalPages}
                 </span>
               </div>
-              <div className="flex items-center space-x-1 mt-4 sm:mt-0">
+
+              {/* Bên phải: Nút điều hướng */}
+              <div className="flex items-center justify-center md:justify-end gap-2 font-bold">
                 <button
                   onClick={() => handlePageChange(1)}
                   disabled={currentPage === 1}
-                  className={`p-2 border rounded-md ${
-                    currentPage === 1
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-white hover:bg-gray-50 text-gray-700"
-                  }`}
+                  className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-100 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                  title="Trang đầu"
                 >
                   &laquo;
                 </button>
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className={`p-2 border rounded-md ${
-                    currentPage === 1
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-white hover:bg-gray-50 text-gray-700"
-                  }`}
+                  className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-100 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                  title="Trước"
                 >
                   &lt;
                 </button>
-                {getPageNumbers().map((number) => (
-                  <button
-                    key={number}
-                    onClick={() => handlePageChange(number)}
-                    className={`p-2 border rounded-md min-w-[40px] ${
-                      currentPage === number
-                        ? "bg-green-500 text-white"
-                        : "bg-white hover:bg-gray-50 text-gray-700"
-                    }`}
-                  >
-                    {number}
-                  </button>
-                ))}
+
+                <div className="hidden sm:flex items-center gap-1.5 mx-1">
+                  {getPageNumbers().map((number) => (
+                    <button
+                      key={number}
+                      onClick={() => handlePageChange(number)}
+                      className={`h-10 min-w-[40px] px-2 rounded-xl text-sm transition-all duration-200 active:scale-95 ${currentPage === number
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-100"
+                        : "bg-white text-slate-600 border border-slate-100 hover:bg-slate-50"
+                        }`}
+                    >
+                      {number}
+                    </button>
+                  ))}
+                </div>
+
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className={`p-2 border rounded-md ${
-                    currentPage === totalPages
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-white hover:bg-gray-50 text-gray-700"
-                  }`}
+                  className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-100 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                  title="Sau"
                 >
                   &gt;
                 </button>
                 <button
                   onClick={() => handlePageChange(totalPages)}
                   disabled={currentPage === totalPages}
-                  className={`p-2 border rounded-md ${
-                    currentPage === totalPages
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-white hover:bg-gray-50 text-gray-700"
-                  }`}
+                  className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-600 border border-slate-100 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                  title="Trang cuối"
                 >
                   &raquo;
                 </button>
@@ -474,6 +428,20 @@ export default function OnlineOrder() {
           </div>
         )}
       </div>
+
+      {/* Global CSS for animations */}
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slide-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fade-in 0.6s ease-out forwards; }
+        .animate-slide-up { animation: slide-up 0.6s ease-out 0.2s both; }
+      `}</style>
     </div>
   );
 }
