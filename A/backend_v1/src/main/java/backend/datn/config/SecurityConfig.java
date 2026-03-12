@@ -38,6 +38,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configure(http))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll() // Cho phép không cần token
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll() // Swagger UI
                         .requestMatchers(HttpMethod.GET,"/api/products/**").permitAll() // Cho phép không cần token
                         .requestMatchers("/api/account/**").authenticated()
                         .requestMatchers(HttpMethod.GET,"/api/product-details/**").permitAll()
