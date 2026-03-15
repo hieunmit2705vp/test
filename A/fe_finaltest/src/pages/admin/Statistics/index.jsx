@@ -42,9 +42,10 @@ const StatisticsPage = () => {
   const [totalAdmins, setTotalAdmins] = useState(0);
   const [totalStaff, setTotalStaff] = useState(0);
   const [topSellingProducts, setTopSellingProducts] = useState([]);
+  const [topCustomers, setTopCustomers] = useState([]);
   const [loadingTop, setLoadingTop] = useState(false);
   const [topError, setTopError] = useState(null);
-  const [appliedStart, setAppliedStart] = useState(new Date(new Date().setHours(0,0,0,0)));
+  const [appliedStart, setAppliedStart] = useState(new Date(new Date().setHours(0, 0, 0, 0)));
   const [appliedEnd, setAppliedEnd] = useState(new Date());
 
   // Thống kê theo khoảng thời gian
@@ -98,7 +99,7 @@ const StatisticsPage = () => {
     fetchData();
   }, []);
 
-  const [startDateTime, setStartDateTime] = useState(new Date(new Date().setHours(0,0,0,0)));
+  const [startDateTime, setStartDateTime] = useState(new Date(new Date().setHours(0, 0, 0, 0)));
   const [endDateTime, setEndDateTime] = useState(new Date());
 
   useEffect(() => {
@@ -113,7 +114,7 @@ const StatisticsPage = () => {
 
   const setPreset = (preset) => {
     const now = new Date();
-    
+
     if (preset === "today") {
       setStartDateTime(new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0));
       setEndDateTime(now);
@@ -151,14 +152,16 @@ const StatisticsPage = () => {
       const sDate = formatForBackend(startDateTime);
       const eDate = formatForBackend(endDateTime);
 
-      const [topProducts, pStats] = await Promise.all([
+      const [topProducts, topCusts, pStats] = await Promise.all([
         StatisticsService.getTopSellingProducts(sDate, eDate),
+        StatisticsService.getTop5Customers(sDate, eDate),
         StatisticsService.getPeriodStatistics(sDate, eDate)
       ]);
 
       setTopSellingProducts(topProducts || []);
+      setTopCustomers(topCusts || []);
       setPeriodStats(pStats || { revenue: 0, profit: 0, orderCount: 0, inStoreOrderCount: 0, onlineOrderCount: 0 });
-      
+
       // Cập nhật ngày đã áp dụng cho toàn bộ báo cáo
       setAppliedStart(startDateTime);
       setAppliedEnd(endDateTime);
@@ -182,11 +185,12 @@ const StatisticsPage = () => {
       if (type === 'h') newDate.setHours(parseInt(value));
       if (type === 'm') newDate.setMinutes(parseInt(value));
       if (type === 's') newDate.setSeconds(parseInt(value));
+
       onTimeChange(newDate); // Cập nhật trực tiếp lên state cha
     };
 
     return (
-      <div 
+      <div
         className="flex items-center justify-center gap-1 p-2 bg-gray-50 border-t border-gray-100 rounded-b-xl"
         onClick={(e) => e.stopPropagation()} // Ngăn chặn đóng popup khi nhấn vào vùng đệm
       >
@@ -264,7 +268,7 @@ const StatisticsPage = () => {
             <span className="text-2xl">📅</span>
             <h2 className="text-xl font-bold text-gray-800">Bộ lọc thời gian báo cáo</h2>
           </div>
-          
+
           {/* Preset buttons */}
           <div className="flex flex-wrap gap-2 mb-6">
             {[
@@ -387,11 +391,10 @@ const StatisticsPage = () => {
             {tabs.map(tab => (
               <button
                 key={tab.key}
-                className={`px-4 py-2 rounded-t-lg text-sm font-semibold transition-all ${
-                  activeTab === tab.key
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                }`}
+                className={`px-4 py-2 rounded-t-lg text-sm font-semibold transition-all ${activeTab === tab.key
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  }`}
                 onClick={() => setActiveTab(tab.key)}
               >
                 {tab.label}
@@ -410,81 +413,124 @@ const StatisticsPage = () => {
           <OrderStatusDistributionChart startDate={formatForBackend(appliedStart)} endDate={formatForBackend(appliedEnd)} />
         </div>
 
+
+        {/* Top Customers + Top Selling Products side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <TopCustomersChart startDate={formatForBackend(appliedStart)} endDate={formatForBackend(appliedEnd)} />
-          <TopInventoryProductsChart />
-        </div>
-
-        {/* Top Selling Products Filter */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <span className="text-2xl">🏆</span>
-            <h2 className="text-xl font-bold text-gray-800">Top 5 sản phẩm bán chạy nhất</h2>
-          </div>
-          
-          {topError && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm animate-pulse">
-                <span>⚠️</span> {topError}
+          {/* Top 5 khách hàng */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">👑</span>
+              <h2 className="text-xl font-bold text-gray-800">Top 5 khách hàng chi tiêu nhiều nhất</h2>
             </div>
-          )}
-
-          <div className="overflow-x-auto rounded-xl border border-gray-100">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="py-4 px-4 text-left font-bold text-gray-600 w-16">Thứ hạng</th>
-                  <th className="py-4 px-4 text-left font-bold text-gray-600">Thông tin sản phẩm</th>
-                  <th className="py-4 px-4 text-center font-bold text-gray-600 w-32">Số lượng bán</th>
-                  <th className="py-4 px-4 text-right font-bold text-gray-600 w-40">Doanh thu</th>
-                  <th className="py-4 px-4 text-right font-bold text-gray-600 w-40">Lợi nhuận</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topSellingProducts.length > 0 ? (
-                  topSellingProducts.map((product, index) => (
-                    <tr key={index} className="border-t border-gray-50 hover:bg-blue-50/30 transition-colors">
-                      <td className="py-4 px-4">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black shadow-sm ${
-                          index === 0 ? "bg-gradient-to-br from-yellow-300 to-yellow-500 text-white" :
-                          index === 1 ? "bg-gradient-to-br from-gray-300 to-gray-400 text-white" :
-                          index === 2 ? "bg-gradient-to-br from-orange-300 to-orange-500 text-white" :
-                          "bg-white text-gray-400 border border-gray-200"
-                        }`}>
-                          {index + 1}
+            <div className="overflow-x-auto rounded-xl border border-gray-100">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="py-3 px-3 text-left font-bold text-gray-600 w-12">Hạng</th>
+                    <th className="py-3 px-3 text-left font-bold text-gray-600">Khách hàng</th>
+                    <th className="py-3 px-3 text-right font-bold text-gray-600 w-36">Tổng chi tiêu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topCustomers.length > 0 ? (
+                    topCustomers.map((cust, index) => (
+                      <tr key={index} className="border-t border-gray-50 hover:bg-purple-50/30 transition-colors">
+                        <td className="py-3 px-3">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black shadow-sm ${index === 0 ? "bg-gradient-to-br from-yellow-300 to-yellow-500 text-white" :
+                            index === 1 ? "bg-gradient-to-br from-gray-300 to-gray-400 text-white" :
+                              index === 2 ? "bg-gradient-to-br from-orange-300 to-orange-500 text-white" :
+                                "bg-white text-gray-400 border border-gray-200"
+                            }`}>
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="font-bold text-gray-800 text-xs leading-tight">{cust.fullname || "Khách vãng lai"}</div>
+                          {cust.phone && <div className="text-[10px] text-gray-400 mt-0.5">{cust.phone}</div>}
+                          {cust.email && <div className="text-[10px] text-gray-400 mt-0.5">{cust.email}</div>}
+                        </td>
+                        <td className="py-3 px-3 text-right font-bold text-purple-700 text-xs">
+                          {(cust.totalSpent || 0).toLocaleString("vi-VN")}₫
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="3" className="py-12 text-center text-gray-400">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="text-5xl">👥</div>
+                          <p className="text-sm text-gray-500">Chưa có dữ liệu. Hãy chọn khoảng thời gian và nhấn lọc.</p>
                         </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="font-bold text-gray-800">{product.productDetailName || "Không xác định"}</div>
-                        <div className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">Mã SP: #{index + 1001}</div>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-black border border-blue-100">
-                          {(product.totalQuantitySold || 0).toLocaleString()} sp
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-right font-bold text-gray-700">
-                        {(product.totalRevenue || 0).toLocaleString("vi-VN")}₫
-                      </td>
-                      <td className="py-4 px-4 text-right font-black text-emerald-600 bg-emerald-50/30">
-                        {(product.totalProfit || 0).toLocaleString("vi-VN")}₫
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="5" className="py-20 text-center text-gray-400">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="text-6xl animate-bounce">📊</div>
-                        <div className="max-w-xs mx-auto">
-                            <p className="text-lg font-bold text-gray-500">Chưa có dữ liệu thống kê kình doanh</p>
-                            <p className="text-sm mt-1">Chọn khoảng thời gian trên và nhấn lọc để tải báo cáo chi tiết nhất.</p>
-                        </div>
-                      </div>
-                    </td>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Top 5 bán chạy */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">🏆</span>
+              <h2 className="text-xl font-bold text-gray-800">Top 5 sản phẩm bán chạy nhất</h2>
+            </div>
+
+            {topError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm">
+                <span>⚠️</span> {topError}
+              </div>
+            )}
+
+            <div className="overflow-x-auto rounded-xl border border-gray-100">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="py-3 px-3 text-left font-bold text-gray-600 w-12">Hạng</th>
+                    <th className="py-3 px-3 text-left font-bold text-gray-600">Sản phẩm</th>
+                    <th className="py-3 px-3 text-center font-bold text-gray-600 w-24">Số lượng</th>
+                    <th className="py-3 px-3 text-right font-bold text-gray-600 w-32">Doanh thu</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {topSellingProducts.length > 0 ? (
+                    topSellingProducts.map((product, index) => (
+                      <tr key={index} className="border-t border-gray-50 hover:bg-blue-50/30 transition-colors">
+                        <td className="py-3 px-3">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black shadow-sm ${index === 0 ? "bg-gradient-to-br from-yellow-300 to-yellow-500 text-white" :
+                            index === 1 ? "bg-gradient-to-br from-gray-300 to-gray-400 text-white" :
+                              index === 2 ? "bg-gradient-to-br from-orange-300 to-orange-500 text-white" :
+                                "bg-white text-gray-400 border border-gray-200"
+                            }`}>
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="font-bold text-gray-800 text-xs leading-tight">{product.productDetailName || "Không xác định"}</div>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-full text-xs font-black border border-blue-100">
+                            {(product.totalQuantitySold || 0).toLocaleString()} sp
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right font-bold text-gray-700 text-xs">
+                          {(product.totalRevenue || 0).toLocaleString("vi-VN")}₫
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="py-12 text-center text-gray-400">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="text-5xl">📊</div>
+                          <p className="text-sm text-gray-500">Chưa có dữ liệu. Hãy chọn khoảng thời gian và nhấn lọc.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

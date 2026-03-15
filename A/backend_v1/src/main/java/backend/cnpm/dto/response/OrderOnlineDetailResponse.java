@@ -1,0 +1,17 @@
+package backend.cnpm.dto.response;
+
+import lombok.Builder;
+import lombok.Data;
+
+import java.math.BigDecimal;
+
+@Builder
+@Data
+public class OrderOnlineDetailResponse{
+    Integer id;
+    OrderOnlineResponse order;
+    ProductDetailResponse productDetail;
+    BigDecimal price;
+    BigDecimal importPrice;
+    Integer quantity;
+}

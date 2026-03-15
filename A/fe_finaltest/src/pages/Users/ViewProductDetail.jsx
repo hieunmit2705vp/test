@@ -12,6 +12,7 @@ const ViewProductDetail = () => {
   const [productDetails, setProductDetails] = useState([]);
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [selectedImage, setSelectedImage] = useState("");
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 0 });
   const [quantity, setQuantity] = useState(1);
   const [isLoadingCart, setIsLoadingCart] = useState(false);
   const [error, setError] = useState(null);
@@ -49,6 +50,12 @@ const ViewProductDetail = () => {
           setAvailableCollars(uniqueValues("collar", "name"));
           setAvailableSleeves(uniqueValues("sleeve", "sleeveName"));
 
+          const allPrices = updatedDetails.map(d => {
+            const salePrice = d.salePrice || 0;
+            const promotionPercent = d.promotion?.promotionPercent || 0;
+            return promotionPercent > 0 ? salePrice * (1 - promotionPercent / 100) : salePrice;
+          });
+          setPriceRange({ min: Math.min(...allPrices), max: Math.max(...allPrices) });
         } else {
           setError("Không tìm thấy sản phẩm hoặc biến thể nào với mã: " + productCode);
         }
@@ -239,19 +246,26 @@ const ViewProductDetail = () => {
 
               {/* Price */}
               <div className="mb-8 p-6 bg-gray-50 rounded-2xl border border-gray-100">
-                <div className="flex items-end gap-3 flex-wrap">
-                  <span className="text-4xl font-black text-[#1E3A8A] tracking-tight">
-                    {discountPrice.toLocaleString("vi-VN")}₫
-                  </span>
+                <div className="flex flex-col gap-3">
+                  <div className="flex justify-between items-center w-full">
+                    <span className="text-3xl md:text-4xl font-black text-[#1E3A8A] tracking-tight">
+                      {discountPrice.toLocaleString("vi-VN")}₫
+                    </span>
+                    {priceRange.min !== priceRange.max && (
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                        Tầm giá: {priceRange.min.toLocaleString("vi-VN")}₫ - {priceRange.max.toLocaleString("vi-VN")}₫
+                      </span>
+                    )}
+                  </div>
                   {promotionPercent > 0 && (
-                    <>
-                      <span className="text-xl text-gray-400 line-through font-medium mb-1">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl text-gray-400 line-through font-medium">
                         {salePrice.toLocaleString("vi-VN")}₫
                       </span>
-                      <span className="text-sm font-bold text-red-500 bg-red-100 px-2 py-1 rounded-md mb-2">
+                      <span className="text-sm font-bold text-red-500 bg-red-100 px-2 py-1 rounded-md">
                         Tiết kiệm {Math.round(promotionPercent)}%
                       </span>
-                    </>
+                    </div>
                   )}
                 </div>
               </div>

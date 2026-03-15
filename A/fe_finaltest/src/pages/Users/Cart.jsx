@@ -226,8 +226,7 @@ function Cart() {
                       </div>
                       <h3 className="font-bold text-gray-800 text-sm sm:text-base line-clamp-1">{item.productName}</h3>
                       <div className="flex items-center text-sm text-gray-500 mt-1 gap-3">
-                        <span className="bg-gray-100 px-2 py-0.5 rounded text-xs">Màu: {item.colorName || "N/A"}</span>
-                        <span className="bg-gray-100 px-2 py-0.5 rounded text-xs">Size: {item.sizeName || "N/A"}</span>
+                        <span className="bg-gray-100 px-2 py-0.5 rounded text-xs">{item.productDetailName || "N/A"}</span>
                       </div>
                       <div className="sm:hidden mt-2 font-bold text-[#1E3A8A]">
                         {(item.discountPrice || item.price).toLocaleString()}₫

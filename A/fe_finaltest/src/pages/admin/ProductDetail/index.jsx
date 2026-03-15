@@ -103,7 +103,7 @@ export default function ProductDetail() {
         ...filters
       });
       setProducts(result.content);
-      setTotalPages(result.totalPages);
+      setTotalPages(result.page?.totalPages || 0);
       setLoading(false);
     } catch (error) {
       setError("Error fetching product details");

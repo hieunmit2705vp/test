@@ -77,6 +77,10 @@ export default function Product() {
     navigate(`/admin/product/${code}`);
   };
 
+  const handleCreateDetailForProduct = (productId) => {
+    navigate(`/admin/product/create?productId=${productId}`);
+  };
+
   const handleUpdateProduct = (product) => {
     setUpdatedProduct({
       brandId: product.brand.id,
@@ -254,6 +258,13 @@ export default function Product() {
                           title="Xem chi tiết"
                         >
                           <AiOutlineEye size={18} />
+                        </button>
+                        <button
+                          className="w-8 h-8 rounded-full bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-800 flex items-center justify-center transition-all duration-200 shadow-sm border border-green-200"
+                          onClick={() => handleCreateDetailForProduct(item.id)}
+                          title="Thêm biến thể cho sản phẩm này"
+                        >
+                          <AiOutlinePlus size={18} />
                         </button>
                         {isAdmin && (
                           <>

@@ -10,7 +10,12 @@ import bannerStyle from "../../assets/dung-luong-banner-thoi-trang.jpg";
 import bannerLookbook from "../../assets/p1.png";
 
 const formatCurrency = (amount) => {
-  return amount ? amount.toLocaleString("vi-VN") + "₫" : "Liên hệ";
+  return amount != null ? amount.toLocaleString("vi-VN") + "₫" : "Liên hệ";
+};
+
+const formatPriceRange = (minPrice, maxPrice) => {
+  if (minPrice === maxPrice) return formatCurrency(minPrice);
+  return `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`;
 };
 
 const ProductsBanrd = () => {
@@ -272,8 +277,8 @@ const ProductsBanrd = () => {
 
 // Reusable Premium Product Card (Consistent with Home.jsx)
 const ProductCard = ({ product, onClick, onToggleSelect, selectedProducts }) => {
-  const discount = product.importPrice > product.salePrice
-    ? Math.round(((product.importPrice - product.salePrice) / product.importPrice) * 100)
+  const discount = product.importPrice > product.minPrice
+    ? Math.round(((product.importPrice - product.minPrice) / product.importPrice) * 100)
     : 0;
 
   const isSelected = selectedProducts?.some((p) => p.id === product.id);
@@ -289,14 +294,14 @@ const ProductCard = ({ product, onClick, onToggleSelect, selectedProducts }) => 
 
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
-          {discount > 0 && (
-            <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
-              -{discount}%
+          {product.isSale && (
+            <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm animate-pulse">
+              SALE
             </span>
           )}
-          {product.isNew && (
-            <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
-              NEW
+          {discount > 0 && (
+            <span className="bg-[#1E3A8A] text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
+              -{discount}%
             </span>
           )}
         </div>
@@ -332,21 +337,21 @@ const ProductCard = ({ product, onClick, onToggleSelect, selectedProducts }) => 
         </div>
 
         <div className="mt-auto pt-3 border-t border-gray-50">
-          <div className="flex items-end justify-between">
-            <div className="flex flex-col">
-              <span className="text-[#1E3A8A] font-extrabold text-lg">
-                {formatCurrency(product.salePrice)}
+          <div className="flex justify-between items-center text-[#1E3A8A] font-extrabold text-sm mb-2">
+            <span>{formatCurrency(product.minPrice)}</span>
+            {product.minPrice !== product.maxPrice && (
+              <span>{formatCurrency(product.maxPrice)}</span>
+            )}
+          </div>
+          <div className="flex justify-between items-center text-xs">
+            {product.importPrice > product.minPrice ? (
+              <span className="text-gray-400 line-through font-medium">
+                {formatCurrency(product.importPrice)}
               </span>
-              {discount > 0 && (
-                <span className="text-gray-400 text-xs line-through font-medium">
-                  {formatCurrency(product.importPrice)}
-                </span>
-              )}
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] text-gray-500 block">Đã bán</span>
-              <span className="text-xs font-bold text-gray-700">{product.quantitySaled || 0}</span>
-            </div>
+            ) : <span></span>}
+            <span className="text-gray-700 font-bold">
+              Đã bán: {product.quantitySaled || 0}
+            </span>
           </div>
         </div>
       </div>

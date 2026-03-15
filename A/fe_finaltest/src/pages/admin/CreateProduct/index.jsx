@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaInfoCircle } from "react-icons/fa";
 import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
+import { useSearchParams } from "react-router-dom";
 import ProductVariants from "./components/ProductVariants";
 import ProductService from "../../../services/ProductService";
 import ProductDetailService from "../../../services/ProductDetailService";
@@ -12,6 +13,7 @@ import SizeService from "../../../services/SizeService";
 import PromotionService from "../../../services/PromotionServices";
 
 export default function CreateProduct() {
+  const [searchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [collars, setCollars] = useState([]);
   const [sizes, setSizes] = useState([]);
@@ -31,6 +33,23 @@ export default function CreateProduct() {
     quantity: "",
     description: "",
   });
+
+  useEffect(() => {
+    const selectedProductId = Number(searchParams.get("productId"));
+    if (!selectedProductId || products.length === 0) return;
+
+    const productExists = products.some((product) => product.id === selectedProductId);
+    if (!productExists) return;
+
+    setGenerateData((prev) =>
+      prev.productId === selectedProductId
+        ? prev
+        : {
+            ...prev,
+            productId: selectedProductId,
+          }
+    );
+  }, [searchParams, products]);
 
   useEffect(() => {
     fetchSelectOptions();
@@ -197,8 +216,16 @@ export default function CreateProduct() {
                   name="product"
                   options={products.map((product) => ({
                     value: product.id,
-                    label: product.productName,
+                    label: `${product.productName} (${product.productCode})`,
                   }))}
+                  value={
+                    products
+                      .map((product) => ({
+                        value: product.id,
+                        label: `${product.productName} (${product.productCode})`,
+                      }))
+                      .find((option) => option.value === generateData.productId) || null
+                  }
                   isClearable
                   placeholder="Chọn sản phẩm..."
                   onChange={(selectedOption) =>

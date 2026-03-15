@@ -8,7 +8,18 @@ import PaymentService from "../../services/PaymentService";
 import LoginInfoService from "../../services/LoginInfoService";
 import VoucherService from "../../services/VoucherServices";
 import CustomerAddressService from "../../services/CustomerAddressService";
-import { FaMoneyBillWave, FaCreditCard, FaMapMarkerAlt, FaUser, FaPhoneAlt, FaEnvelope, FaTruck, FaTicketAlt, FaShieldAlt } from "react-icons/fa";
+import {
+  FaMoneyBillWave,
+  FaCreditCard,
+  FaMapMarkerAlt,
+  FaUser,
+  FaPhoneAlt,
+  FaEnvelope,
+  FaTruck,
+  FaTicketAlt,
+  FaShieldAlt,
+  FaArrowRight
+} from "react-icons/fa";
 
 function Payment() {
   const location = useLocation();
@@ -29,6 +40,8 @@ function Payment() {
   const [finalTotal, setFinalTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [voucherSearch, setVoucherSearch] = useState("");
 
   const { items, totalAmount, totalItems } = location.state || {};
 
@@ -115,24 +128,32 @@ function Payment() {
         try {
           const allVouchers = await VoucherService.getAllVouchers();
           const now = new Date();
-          const validVouchers = allVouchers.content.filter((voucher) => {
+          const activeVouchers = allVouchers.content.filter((voucher) => {
             const startDate = new Date(voucher.startDate);
             const endDate = new Date(voucher.endDate);
-            return (
-              voucher.status &&
-              (totalAmount || 0) >= voucher.minCondition &&
-              now >= startDate &&
-              now <= endDate
-            );
+            return voucher.status && now >= startDate && now <= endDate;
           });
+          setVouchers(activeVouchers);
 
-          const formattedVouchers = validVouchers.map((voucher) => ({
-            value: voucher.id,
-            label: `${voucher.voucherName} (-${voucher.reducedPercent}%)`,
-            ...voucher,
-          }));
-          setVouchers(formattedVouchers);
-          if (formattedVouchers.length > 0) setSelectedVoucher(formattedVouchers[0]);
+          // Auto-select optimal voucher
+          if (activeVouchers.length > 0 && totalAmount > 0) {
+            let bestVoucher = null;
+            let maxDiscountAmount = -1;
+
+            activeVouchers.forEach(v => {
+              if (totalAmount >= v.minCondition) {
+                const discount = Math.min((totalAmount * v.reducedPercent) / 100, v.maxDiscount);
+                if (discount > maxDiscountAmount) {
+                  maxDiscountAmount = discount;
+                  bestVoucher = v;
+                }
+              }
+            });
+
+            if (bestVoucher) {
+              setSelectedVoucher(bestVoucher);
+            }
+          }
         } catch (error) {
           console.error("Error fetching vouchers", error)
         }
@@ -252,10 +273,12 @@ function Payment() {
     setIsConfirmModalOpen(false);
     setIsOrdering(true);
 
+    const voucherId = selectedVoucher?.id ?? selectedVoucher?.value ?? null;
+
     const orderData = {
       phone: formData.phone,
       address: selectedAddress ? selectedAddress.label : "",
-      voucherId: selectedVoucher ? selectedVoucher.value : null,
+      voucherId: voucherId ? String(voucherId) : null,
       shipfee: shippingFee,
       paymentMethod: paymentMethod === "cod" ? 1 : 2,
       statusOrder: 0,
@@ -423,18 +446,41 @@ function Payment() {
                 ))}
               </div>
 
-              {/* Voucher */}
+              {/* Voucher Selector */}
               <div className="mb-6">
-                <div className="flex items-center gap-2 mb-2 text-sm font-bold text-gray-700">
+                <div className="flex items-center gap-2 mb-3 text-sm font-bold text-gray-700">
                   <FaTicketAlt className="text-[#1E3A8A]" /> Mã giảm giá
                 </div>
-                <Select
-                  options={vouchers}
-                  value={selectedVoucher}
-                  onChange={setSelectedVoucher}
-                  placeholder="Chọn mã giảm giá..."
-                  className="text-sm"
-                />
+                {selectedVoucher ? (
+                  <div className="p-4 rounded-xl border-2 border-blue-100 bg-blue-50/50 flex items-center justify-between mb-2">
+                    <div className="flex-1">
+                      <p className="font-bold text-[#1E3A8A]">{selectedVoucher.voucherCode}</p>
+                      <p className="text-xs text-gray-600 line-clamp-1">{selectedVoucher.voucherName}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSelectedVoucher(null)}
+                        className="text-xs text-red-500 font-bold hover:underline"
+                      >
+                        Gỡ
+                      </button>
+                      <button
+                        onClick={() => setIsVoucherModalOpen(true)}
+                        className="text-xs text-[#1E3A8A] font-bold hover:underline"
+                      >
+                        Đổi
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsVoucherModalOpen(true)}
+                    className="w-full py-3 px-4 rounded-xl border border-gray-200 text-gray-400 text-sm flex items-center justify-between hover:border-[#1E3A8A] hover:bg-gray-50 transition-all"
+                  >
+                    <span>Chọn hoặc nhập mã...</span>
+                    <FaArrowRight size={12} />
+                  </button>
+                )}
               </div>
 
               {/* Totals */}
@@ -507,7 +553,7 @@ function Payment() {
         {/* Confirm Modal */}
         {isConfirmModalOpen && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl text-center">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl text-center text-gray-600">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-[#1E3A8A] text-2xl">
                 <FaMoneyBillWave />
               </div>
@@ -518,6 +564,130 @@ function Payment() {
                 <button onClick={() => setIsConfirmModalOpen(false)} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-gray-600 hover:bg-gray-200">Kiểm tra lại</button>
                 <button onClick={handleConfirmOrder} disabled={isOrdering} className="flex-1 py-3 bg-[#1E3A8A] text-white rounded-xl font-bold hover:bg-blue-800 disabled:opacity-50">
                   {isOrdering ? "Đang xử lý..." : "Đồng ý"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Voucher Modal */}
+        {isVoucherModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh] overflow-hidden animate-fade-in">
+              {/* Header */}
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
+                <div>
+                  <h2 className="text-2xl font-black text-[#1E3A8A]">Kho Voucher</h2>
+                  <p className="text-sm text-gray-500 mt-1">Chọn món quà ưu đãi dành cho bạn</p>
+                </div>
+                <button
+                  onClick={() => setIsVoucherModalOpen(false)}
+                  className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-all font-bold text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Search */}
+              <div className="px-6 py-4 shrink-0">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                  <input
+                    type="text"
+                    placeholder="Tìm theo tên hoặc mã voucher..."
+                    className="w-full pl-10 pr-4 py-3 bg-gray-100 border-none rounded-2xl focus:ring-2 focus:ring-[#1E3A8A] transition-all outline-none text-sm"
+                    value={voucherSearch}
+                    onChange={(e) => setVoucherSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Voucher List */}
+              <div className="p-6 overflow-y-auto space-y-4 flex-1 custom-scrollbar bg-gray-50/50">
+                {vouchers
+                  .filter(v =>
+                    v.voucherCode.toLowerCase().includes(voucherSearch.toLowerCase()) ||
+                    v.voucherName.toLowerCase().includes(voucherSearch.toLowerCase())
+                  )
+                  .map(voucher => {
+                    const isEligible = (totalAmount || 0) >= voucher.minCondition;
+                    const isSelected = selectedVoucher?.id === voucher.id;
+
+                    return (
+                      <div
+                        key={voucher.id}
+                        onClick={() => {
+                          if (isEligible) {
+                            setSelectedVoucher(voucher);
+                            setIsVoucherModalOpen(false);
+                          }
+                        }}
+                        className={`group relative flex gap-4 p-4 rounded-2xl border-2 transition-all duration-300
+                          ${isSelected ? 'border-[#1E3A8A] bg-blue-50/30' : 'border-white bg-white hover:border-blue-200'}
+                          ${!isEligible ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
+                        `}
+                      >
+                        {/* Left part: Icon/Code */}
+                        <div className={`w-20 h-20 rounded-xl flex flex-col items-center justify-center shrink-0 border border-dashed
+                          ${isSelected ? 'bg-[#1E3A8A] text-white border-white/20' : 'bg-blue-50 text-[#1E3A8A] border-blue-200'}
+                        `}>
+                          <span className="text-xs font-bold opacity-80 uppercase tracking-tighter">Giảm</span>
+                          <span className="text-xl font-black">{voucher.reducedPercent}%</span>
+                        </div>
+
+                        {/* Right part: Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#1E3A8A] bg-blue-50 px-2 py-0.5 rounded">
+                              {voucher.voucherCode}
+                            </span>
+                            {!isEligible && (
+                              <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded">
+                                Chưa đủ {voucher.minCondition.toLocaleString()}₫
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="font-bold text-gray-800 text-sm line-clamp-1 group-hover:text-[#1E3A8A] transition-colors">
+                            {voucher.voucherName}
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+                            {voucher.description}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-[10px] font-bold">
+                            <span className="text-gray-400 font-medium italic">HSD: {new Date(voucher.endDate).toLocaleDateString('vi-VN')}</span>
+                            <span className="text-blue-600">Đơn từ {voucher.minCondition.toLocaleString()}₫</span>
+                            <span className="text-gray-800">Tối đa {voucher.maxDiscount.toLocaleString()}₫</span>
+                          </div>
+                        </div>
+
+                        {/* Selected Indicator */}
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-[#1E3A8A] rounded-full flex items-center justify-center">
+                            <span className="text-white text-[10px]">✓</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                {vouchers.filter(v =>
+                  v.voucherCode.toLowerCase().includes(voucherSearch.toLowerCase()) ||
+                  v.voucherName.toLowerCase().includes(voucherSearch.toLowerCase())
+                ).length === 0 && (
+                    <div className="py-12 text-center">
+                      <FaTicketAlt className="mx-auto text-4xl text-gray-200 mb-4" />
+                      <p className="text-gray-400">Không tìm thấy voucher phù hợp</p>
+                    </div>
+                  )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-gray-100 shrink-0 flex gap-4">
+                <button
+                  onClick={() => setIsVoucherModalOpen(false)}
+                  className="flex-1 py-3 bg-gray-50 text-gray-600 font-bold rounded-xl hover:bg-gray-100 transition-all"
+                >
+                  Đóng
                 </button>
               </div>
             </div>

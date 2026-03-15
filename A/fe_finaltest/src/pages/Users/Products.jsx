@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import debounce from "lodash/debounce";
-import { FaFilter, FaRedo, FaShoppingCart, FaExchangeAlt, FaEye, FaChevronDown, FaCheck, FaSearch } from "react-icons/fa";
+import { FaFilter, FaRedo, FaExchangeAlt, FaEye, FaChevronDown, FaCheck, FaSearch } from "react-icons/fa";
 import BrandService from "../../services/BrandService";
 import CategoryService from "../../services/CategoryService";
 import CollarService from "../../services/CollarService";
@@ -11,7 +11,12 @@ import SleeveService from "../../services/SleeveService";
 import ProductService from "../../services/ProductService";
 
 const formatCurrency = (amount) => {
-  return amount ? amount.toLocaleString("vi-VN") + "₫" : "Liên hệ";
+  return amount != null ? amount.toLocaleString("vi-VN") + "₫" : "Liên hệ";
+};
+
+const formatPriceRange = (minPrice, maxPrice) => {
+  if (minPrice === maxPrice) return formatCurrency(minPrice);
+  return `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`;
 };
 
 const ProductList = () => {
@@ -359,12 +364,16 @@ const ProductList = () => {
 
                       {/* Badges */}
                       <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
-                        {product.importPrice > product.salePrice && (
-                          <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
-                            -{Math.round(((product.importPrice - product.salePrice) / product.importPrice) * 100)}%
+                        {product.isSale && (
+                          <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm animate-pulse">
+                            SALE
                           </span>
                         )}
-                        <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">NEW</span>
+                        {product.importPrice > product.minPrice && (
+                          <span className="bg-[#1E3A8A] text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">
+                            -{Math.round(((product.importPrice - product.minPrice) / product.importPrice) * 100)}%
+                          </span>
+                        )}
                       </div>
 
                       {/* Action Overlay */}
@@ -400,22 +409,24 @@ const ProductList = () => {
 
                       <div className="mt-auto pt-3 border-t border-gray-50">
                         <div className="flex items-end justify-between">
-                          <div className="flex flex-col">
-                            <span className="text-[#1E3A8A] font-extrabold text-lg">
-                              {formatCurrency(product.salePrice)}
-                            </span>
-                            {product.importPrice > product.salePrice && (
-                              <span className="text-xs text-gray-400 line-through font-medium">
-                                {formatCurrency(product.importPrice)}
+                          <div className="flex flex-col w-full">
+                            <div className="flex justify-between items-center text-[#1E3A8A] font-extrabold text-sm mb-1">
+                              <span>{formatCurrency(product.minPrice)}</span>
+                              {product.minPrice !== product.maxPrice && (
+                                <span>{formatCurrency(product.maxPrice)}</span>
+                              )}
+                            </div>
+                            <div className="flex justify-between items-center text-xs">
+                              {product.importPrice > product.salePrice ? (
+                                <span className="text-gray-400 line-through font-medium">
+                                  {formatCurrency(product.importPrice)}
+                                </span>
+                              ) : <span></span>}
+                              <span className="text-gray-500 font-medium">
+                                Đã bán: {product.quantitySaled || 0}
                               </span>
-                            )}
+                            </div>
                           </div>
-                          <button
-                            onClick={() => handleViewProduct(product.productCode)}
-                            className="w-8 h-8 rounded-full bg-gray-100 text-[#1E3A8A] flex items-center justify-center hover:bg-[#1E3A8A] hover:text-white transition-all shadow-sm"
-                          >
-                            <FaShoppingCart size={12} />
-                          </button>
                         </div>
                       </div>
                     </div>
@@ -525,8 +536,12 @@ const ProductList = () => {
                     <tr className="hover:bg-gray-50/50 transition-colors">
                       <td className="p-5 font-semibold text-gray-600 border-r border-gray-100">Giá bán</td>
                       {selectedProducts.map(p => (
-                        <td key={p.id} className="p-5 text-center font-extrabold text-[#1E3A8A] text-lg border-r border-gray-100 last:border-r-0">
-                          {formatCurrency(p.salePrice)}
+                          <td key={p.id} className="p-5 text-center text-[#1E3A8A] text-sm border-r border-gray-100 last:border-r-0">
+                          <div className="flex flex-col items-center gap-1 font-extrabold">
+                            <span>{formatCurrency(p.minPrice)}</span>
+                            {p.minPrice !== p.maxPrice && <span className="text-xs text-gray-400 font-normal">đến</span>}
+                            {p.minPrice !== p.maxPrice && <span>{formatCurrency(p.maxPrice)}</span>}
+                          </div>
                         </td>
                       ))}
                     </tr>

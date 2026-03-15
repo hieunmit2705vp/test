@@ -12,10 +12,18 @@ const OrderService = {
     page = 0,
     size = 100,
     sortKey = "id",
-    sortDirection = "desc"
+    sortDirection = "desc",
+    status = null
   ) => {
     try {
-      const params = { search, page, size, sortKey, sortDirection };
+      const params = {
+        search,
+        page,
+        size,
+        sortKey,
+        sortDirection,
+        ...(status !== null && status !== undefined ? { status } : {}),
+      };
       const response = await api.get(API_URL_ORDER_POS, { params });
       console.log("Danh sách đơn hàng POS: ", response.data.data);
       return response.data.data;
@@ -34,10 +42,18 @@ const OrderService = {
     page = 0,
     size = 10,
     sortKey = "id",
-    sortDirection = "desc"
+    sortDirection = "desc",
+    status = null
   ) => {
     try {
-      const params = { search, page, size, sortKey, sortDirection };
+      const params = {
+        search,
+        page,
+        size,
+        sortKey,
+        sortDirection,
+        ...(status !== null && status !== undefined ? { status } : {}),
+      };
       const response = await api.get(API_URL_ORDER_ONLINE, { params });
       console.log("Danh sách đơn hàng Online: ", response.data.data);
       return response.data.data;

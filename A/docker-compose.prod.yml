@@ -4,11 +4,11 @@
 # ============================================================
 services:
   backend:
-    image: datn_backend:latest
-    container_name: datn_backend
+    image: cnpm_backend:latest
+    container_name: cnpm_backend
     restart: unless-stopped
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST:-host.docker.internal}:${DB_PORT:-3306}/${DB_NAME:-testdb}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Ho_Chi_Minh
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-app:3306/${DB_NAME:-testdb}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Ho_Chi_Minh
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-root}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_MAIL_USERNAME: ${MAIL_USERNAME}
@@ -17,22 +17,19 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - datn_network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - codelo-network
 
   frontend:
-    image: datn_frontend:latest
-    container_name: datn_frontend
+    image: cnpm_frontend:latest
+    container_name: cnpm_frontend
     restart: unless-stopped
     depends_on:
       - backend
     ports:
-      - "80:80"
+      - "3000:80"
     networks:
-      - datn_network
+      - codelo-network
 
 networks:
-  datn_network:
-    name: datn_network
-    driver: bridge
+  codelo-network:
+    external: true

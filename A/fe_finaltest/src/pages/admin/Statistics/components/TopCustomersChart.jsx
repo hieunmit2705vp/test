@@ -39,7 +39,7 @@ const TopCustomersChart = ({ startDate, endDate }) => {
                 <h2 className="text-xl font-bold">Top 5 khách hàng mua nhiều nhất</h2>
                 <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={topCustomers}>
-                        <XAxis dataKey="customerName" />
+                        <XAxis dataKey="fullname" />
                         <YAxis />
                         <Tooltip formatter={(value) => `${value.toLocaleString("vi-VN")} đ`} />
                         <Legend />

@@ -5,7 +5,6 @@ import {
   Users, 
   ShoppingBag, 
   DollarSign, 
-  Package, 
   Calendar,
   ChevronRight,
   ArrowUpRight,
@@ -21,8 +20,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
   Cell,
   PieChart,
   Pie
@@ -56,7 +53,7 @@ const Dashboard = () => {
     totalInvoices: 0,
     totalAdmins: 0,
     totalStaff: 0,
-    topProducts: [],
+    topCustomers: [],
     periodStats: [],
     statusDistribution: []
   });
@@ -86,7 +83,7 @@ const Dashboard = () => {
           invoices, 
           admins,
           staff,
-          topProducts,
+          topCustomers,
           dailyStats,
           statusDist
         ] = await Promise.all([
@@ -96,7 +93,7 @@ const Dashboard = () => {
           StatisticsService.getTotalInvoices(),
           StatisticsService.getTotalAdmins(),
           StatisticsService.getTotalStaff(),
-          StatisticsService.getTopSellingProducts(startDate, endDate),
+          StatisticsService.getTop5Customers(),
           StatisticsService.getDailyStats(startDate, endDate),
           StatisticsService.getOrderStatusDistribution(startDate, endDate)
         ]);
@@ -108,7 +105,7 @@ const Dashboard = () => {
           totalInvoices: invoices || 0,
           totalAdmins: admins || 0,
           totalStaff: staff || 0,
-          topProducts: (topProducts || []).slice(0, 5),
+          topCustomers: (topCustomers || []).slice(0, 5),
           periodStats: dailyStats || [],
           statusDistribution: statusDist || []
         });
@@ -143,7 +140,7 @@ const Dashboard = () => {
               <LayoutDashboard className="text-blue-600" size={32} />
               Tổng Quan Hệ Thống
             </h1>
-            <p className="text-gray-500 mt-1 font-medium">Chào mừng trở lại! Dưới đây là tóm tắt hoạt động kinh doanh 30 ngày qua.</p>
+            <p className="text-gray-500 mt-1 font-medium">Chào mừng trở lại! Dưới đây là tóm tắt hoạt động kinh doanh của hệ thống.</p>
           </div>
           <div className="flex items-center gap-3 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm">
             <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
@@ -314,12 +311,12 @@ const Dashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-8">
-          {/* Top Products Table */}
+          {/* Top Customers Table */}
           <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                <Package className="text-orange-500" size={24} />
-                Sản phẩm bán chạy
+                <Users className="text-violet-600" size={24} />
+                Top 5 khách hàng chi tiêu nhiều nhất
               </h2>
               <button className="text-xs font-bold text-gray-400 hover:text-blue-600 transition-colors">Xem tất cả</button>
             </div>
@@ -327,40 +324,56 @@ const Dashboard = () => {
               <table className="w-full">
                 <thead>
                   <tr className="text-left">
-                    <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Sản phẩm</th>
-                    <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Đã bán</th>
-                    <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Doanh thu</th>
-                    <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Lợi nhuận</th>
+                    <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Khách hàng</th>
+                    <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Liên hệ</th>
+                    <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Tổng chi tiêu</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {stats.topProducts.map((product, idx) => (
+                  {stats.topCustomers.map((customer, idx) => (
                     <tr key={idx} className="group hover:bg-gray-50/50 transition-colors">
                       <td className="py-4">
                         <div className="flex items-center gap-3">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ${
                             idx === 0 ? "bg-yellow-100 text-yellow-700" : 
                             idx === 1 ? "bg-gray-100 text-gray-600" : 
-                            "bg-blue-50 text-blue-600"
+                            idx === 2 ? "bg-orange-100 text-orange-600" :
+                            "bg-violet-50 text-violet-600"
                           }`}>
                             {idx + 1}
                           </div>
-                          <span className="font-bold text-gray-800 text-sm truncate max-w-[200px]">{product.productDetailName}</span>
+                          <div>
+                            <div className="font-bold text-gray-800 text-sm truncate max-w-[220px]">
+                              {customer.fullname || "Khách vãng lai"}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              ID: {customer.id ?? "---"}
+                            </div>
+                          </div>
                         </div>
                       </td>
-                      <td className="py-4 text-center">
-                        <span className="text-xs font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-lg">
-                          {product.totalQuantitySold}
-                        </span>
+                      <td className="py-4 text-center text-sm text-gray-500 font-semibold">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-xs font-black bg-violet-50 text-violet-600 px-2 py-1 rounded-lg">
+                            {customer.phone || "---"}
+                          </span>
+                          <span className="text-[11px] text-gray-400 max-w-[220px] truncate">
+                            {customer.email || "---"}
+                          </span>
+                        </div>
                       </td>
-                      <td className="py-4 text-right font-black text-gray-900 text-sm">
-                        {product.totalRevenue.toLocaleString("vi-VN")}₫
-                      </td>
-                      <td className="py-4 text-right font-black text-emerald-600 text-sm">
-                        {product.totalProfit.toLocaleString("vi-VN")}₫
+                      <td className="py-4 text-right font-black text-violet-600 text-sm">
+                        {(customer.totalSpent || 0).toLocaleString("vi-VN")}₫
                       </td>
                     </tr>
                   ))}
+                  {stats.topCustomers.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="py-10 text-center text-sm text-gray-400 font-medium">
+                        Chưa có dữ liệu khách hàng trong 30 ngày gần đây.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

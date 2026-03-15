@@ -23,19 +23,17 @@ const getStatusClass = (status) => {
     case 1: return `${baseClasses} bg-blue-100 text-blue-800`;
     case 2: return `${baseClasses} bg-green-100 text-green-800`;
     case 3: return `${baseClasses} bg-indigo-100 text-indigo-800`;
-    case 4: return `${baseClasses} bg-orange-100 text-orange-800`;
+    case 4: return `${baseClasses} bg-red-100 text-red-800`;
     case 5: return `${baseClasses} bg-emerald-100 text-emerald-800`;
     default: return `${baseClasses} bg-gray-100 text-gray-800`;
   }
 };
 
 // Component Timeline
-const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
+const OrderTimeline = ({ currentStatus, fetchOrderDetails, note: orderNote }) => {
   const [note, setNote] = useState("");
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(null);
-  const [confirmStatus, setConfirmStatus] = useState(null);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     console.log("Current Status:", currentStatus);
@@ -67,6 +65,21 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
         <path
           fillRule="evenodd"
           d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+          clipRule="evenodd"
+        />
+      </svg>
+    ),
+    1: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+      >
+        <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+        <path
+          fillRule="evenodd"
+          d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"
           clipRule="evenodd"
         />
       </svg>
@@ -110,6 +123,22 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
         />
       </svg>
     ),
+    4: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="15" y1="9" x2="9" y2="15" />
+        <line x1="9" y1="9" x2="15" y2="15" />
+      </svg>
+    ),
   };
 
   // Hàm kiểm tra trạng thái hợp lệ để chuyển
@@ -123,10 +152,14 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
 
     switch (current) {
       case 0:
+        return next === 2 || next === -1 || next === 1;
+      case 1:
         return next === 2 || next === -1;
       case 2:
         return next === 3;
       case 3:
+        return next === 5 || next === 4;
+      case 4:
         return next === 5;
       default:
         return false;
@@ -150,11 +183,17 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
   };
 
   // Lấy class cho node
-  const getNodeClasses = (status) => {
+  const getNodeClasses = (status, nodeValue) => {
     switch (status) {
       case "completed":
         return "bg-green-500 text-white border-green-500 shadow-lg shadow-green-200";
       case "current":
+        if (nodeValue === "4") {
+          return "bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-200 ring-4 ring-orange-100";
+        }
+        if (nodeValue === "-1") {
+          return "bg-red-500 text-white border-red-500 shadow-lg shadow-red-200 ring-4 ring-red-100";
+        }
         return "bg-blue-500 text-white border-blue-500 shadow-lg shadow-blue-200 ring-4 ring-blue-100";
       case "available":
         return "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400";
@@ -167,8 +206,8 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
   const getConnectorClasses = (status) => {
     switch (status) {
       case "completed":
-        return "bg-green-500";
       case "current":
+        return "bg-green-500";
       case "available":
         return "bg-gray-300";
       default:
@@ -178,33 +217,14 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
 
   // Xử lý khi nhấn vào trạng thái
   const handleStatusClick = (status) => {
-    console.log(
-      "Checking status transition:",
-      currentStatus,
-      "->",
-      status,
-      "Valid:",
-      isValidNextStatus(currentStatus, status)
-    );
     if (isValidNextStatus(currentStatus, status)) {
-      setConfirmStatus(status);
-      setShowConfirmModal(true);
+      setSelectedStatus(status);
+      setShowNoteInput(true);
+      setNote("");
     }
   };
 
-  // Xử lý xác nhận từ modal
-  const handleConfirm = () => {
-    setShowConfirmModal(false);
-    setSelectedStatus(confirmStatus);
-    setShowNoteInput(true);
-    setNote("");
-  };
 
-  // Xử lý hủy từ modal
-  const handleCancelConfirm = () => {
-    setShowConfirmModal(false);
-    setConfirmStatus(null);
-  };
 
   // Xử lý gửi trạng thái mới
   const handleSubmitStatus = async () => {
@@ -244,29 +264,30 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
   };
 
   // Định nghĩa luồng chạy chính và nhánh
-  const mainFlow = ["0", "2", "3", "5"];
+  const mainFlow = currentStatus?.toString() === "4" ? ["0", "2", "3", "4"] : ["0", "2", "3", "5"];
 
   return (
     <div className="mb-8">
-      {/* Trạng thái Đã Hủy hiển thị riêng nếu đơn hàng đã bị hủy */}
+      {/* Trạng thái Đã Hủy hoặc Giao hàng thất bại hiển thị riêng nếu là trạng thái hiện tại */}
       {parseInt(currentStatus) === -1 && (
         <div className="flex justify-center mb-8">
           <div className="flex flex-col items-center">
             <div
-              className={`w-16 h-16 flex items-center justify-center rounded-full border-2 transition-all duration-300 ${getNodeClasses(
-                "completed"
-              )}`}
+              className={`w-16 h-16 flex items-center justify-center rounded-full border-2 transition-all duration-300 ${(parseInt(currentStatus) === -1 || parseInt(currentStatus) === 4)
+                ? "bg-red-500 text-white border-red-500 shadow-lg shadow-red-200"
+                : "bg-blue-500 text-white border-blue-500 shadow-lg shadow-blue-200"
+                }`}
             >
-              {statusIcons["-1"]}
+              {statusIcons[currentStatus]}
             </div>
-            <span className="mt-2 font-medium text-red-600">
-              Đơn hàng đã bị hủy
+            <span className={`mt-2 font-medium ${(parseInt(currentStatus) === -1 || parseInt(currentStatus) === 4) ? 'text-red-600' : 'text-blue-600'}`}>
+              {orderStatusMap[currentStatus]}
             </span>
           </div>
         </div>
       )}
 
-      {/* Timeline chính */}
+      {/* Timeline chính - Ẩn nếu là trạng thái kết thúc (Hủy/Thành công) nhưng vẫn hiện nếu là Giao hàng thất bại để có thể giao lại */}
       {parseInt(currentStatus) !== -1 && (
         <div className="relative">
           {/* Timeline chính */}
@@ -280,7 +301,7 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
                 >
                   <button
                     className={`w-12 h-12 flex items-center justify-center rounded-full border-2 font-medium text-sm transition-all duration-300 ${getNodeClasses(
-                      nodeStatus
+                      nodeStatus, status
                     )}`}
                     onClick={() => handleStatusClick(status)}
                     disabled={nodeStatus !== "available"}
@@ -298,10 +319,10 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
                   </button>
                   <span
                     className={`mt-2 text-sm font-medium ${nodeStatus === "current"
-                        ? "text-blue-600"
-                        : nodeStatus === "completed"
-                          ? "text-green-600"
-                          : "text-gray-600"
+                      ? "text-blue-600"
+                      : nodeStatus === "completed"
+                        ? "text-green-600"
+                        : "text-gray-600"
                       }`}
                   >
                     {orderStatusMap[status]}
@@ -332,6 +353,20 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
             </div>
           )}
 
+          {/* Nút Giao hàng thất bại */}
+          {parseInt(currentStatus) === 3 && (
+            <div className="mt-12 flex justify-center">
+              <button
+                className={`px-4 py-2 rounded-full border-2 font-medium text-sm transition-all duration-300 flex items-center gap-2 bg-white text-orange-700 border-orange-300 hover:bg-orange-50`}
+                onClick={() => handleStatusClick("4")}
+                title="Giao hàng thất bại (yêu cầu lý do)"
+              >
+                {statusIcons["4"]}
+                Giao hàng thất bại
+              </button>
+            </div>
+          )}
+
           {/* Ô nhập ghi chú */}
           {showNoteInput && (
             <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -349,6 +384,48 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
                 onChange={(e) => setNote(e.target.value)}
                 rows={4}
               />
+              <div className="mt-3">
+                {selectedStatus === "2" && (
+                  <div className="flex items-center gap-2 text-blue-600 bg-blue-50 p-3 rounded-lg border border-blue-100 mb-4 animate-pulse">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm font-bold italic">
+                      Lưu ý: Số lượng sản phẩm sẽ được trừ khỏi kho khi bạn xác nhận!
+                    </span>
+                  </div>
+                )}
+                {selectedStatus === "-1" && (
+                  <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 mb-4 animate-pulse">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm font-bold italic">
+                      Lưu ý: Số lượng sản phẩm sẽ được hoàn trả nếu đơn hàng đã được xác nhận trước đó!
+                    </span>
+                  </div>
+                )}
+                {selectedStatus === "4" && (
+                  <div className="flex items-center gap-2 text-orange-600 bg-orange-50 p-3 rounded-lg border border-orange-100 mb-4 animate-pulse">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm font-bold italic">
+                      Xác nhận giao hàng thất bại? Bạn có thể thử giao lại sau.
+                    </span>
+                  </div>
+                )}
+                {selectedStatus === "5" && (
+                  <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg border border-green-100 mb-4 animate-pulse">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm font-bold italic">
+                      Xác nhận giao hàng thành công! Đơn hàng sẽ kết thúc.
+                    </span>
+                  </div>
+                )}
+              </div>
               <div className="mt-2 flex justify-end gap-2">
                 <button
                   className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
@@ -370,55 +447,44 @@ const OrderTimeline = ({ currentStatus, fetchOrderDetails }) => {
             </div>
           )}
 
-          {/* Modal xác nhận */}
-          {showConfirmModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  {confirmStatus === "-1"
-                    ? "Bạn có muốn hủy đơn hàng không?"
-                    : confirmStatus === "2"
-                      ? "Bạn có muốn xác nhận đơn hàng không? Số lượng sản phẩm sẽ được trừ khỏi kho."
-                      : `Bạn có muốn chuyển trạng thái sang "${orderStatusMap[confirmStatus]}" không?`}
-                </h3>
-                <div className="flex justify-end gap-2">
-                  <button
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                    onClick={handleCancelConfirm}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                    onClick={handleConfirm}
-                  >
-                    Xác nhận
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* Mô tả trạng thái hiện tại */}
-          <div className="mt-8 bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <h4 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              Trạng thái hiện tại: {orderStatusMap[currentStatus]}
-            </h4>
-            <p className="text-sm text-gray-600">
-              {parseInt(currentStatus) === -1
-                ? "Đơn hàng đã bị h  và số lượng sản phẩm đã được hoàn lại nếu trước đó đã xác nhận."
-                : parseInt(currentStatus) === 0
-                  ? "Đơn hàng đang chờ được xác nhận. Số lượng sản phẩm chưa được trừ."
-                  : parseInt(currentStatus) === 2
-                    ? "Đơn hàng đã được xác nhận và số lượng sản phẩm đã được trừ khỏi kho."
-                    : parseInt(currentStatus) === 3
-                      ? "Đơn hàng đang được giao đến địa chỉ của bạn."
-                      : "Đơn hàng đã được giao thành công. Cảm ơn bạn đã mua sắm!"}
-            </p>
-          </div>
+
         </div>
       )}
+
+      {/* Mô tả trạng thái hiện tại */}
+      <div className="mt-8 bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <h4 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+          Trạng thái hiện tại: {orderStatusMap[currentStatus]}
+        </h4>
+        <p className="text-sm text-gray-600">
+          {parseInt(currentStatus) === -1
+            ? "Đơn hàng đã bị hủy và số lượng sản phẩm đã được hoàn lại nếu trước đó đã xác nhận."
+            : parseInt(currentStatus) === 0
+              ? "Đơn hàng đang chờ được xác nhận. Số lượng sản phẩm chưa được trừ."
+              : parseInt(currentStatus) === 1
+                ? "Đơn hàng đang chờ khách hàng thanh toán."
+                : parseInt(currentStatus) === 2
+                  ? "Đơn hàng đã được xác nhận và số lượng sản phẩm đã được trừ khỏi kho."
+                  : parseInt(currentStatus) === 3
+                    ? "Đơn hàng đang được giao đến địa chỉ của bạn."
+                    : parseInt(currentStatus) === 4
+                      ? "Giao hàng thất bại. Bạn có thể thử giao lại hoặc hủy đơn hàng."
+                      : "Đơn hàng đã được giao thành công. Cảm ơn bạn đã mua sắm!"}
+        </p>
+        {orderNote && (
+          <div className="mt-4 p-4 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
+            <div className="flex items-center gap-2 mb-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              <span className="font-semibold text-gray-800">Ghi chú từ cửa hàng:</span>
+            </div>
+            <p className="text-gray-700 italic">{orderNote}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -665,15 +731,7 @@ const OrderDetail = () => {
                   </span>
                 </p>
               </div>
-              {orderDetails.note &&
-                parseInt(orderDetails.statusOrder) === -1 && (
-                  <div className="col-span-2">
-                    <p className="text-sm text-gray-500">Lý do hủy</p>
-                    <p className="font-medium text-red-600">
-                      {orderDetails.note}
-                    </p>
-                  </div>
-                )}
+
             </div>
           </div>
 
@@ -683,6 +741,7 @@ const OrderDetail = () => {
               <OrderTimeline
                 currentStatus={orderDetails.statusOrder}
                 fetchOrderDetails={fetchOrderDetails}
+                note={orderDetails.note}
               />
             </div>
           )}
@@ -867,7 +926,7 @@ const OrderDetail = () => {
 
           {/* Voucher Information */}
           {orderDetails.voucher && (
-            <div className="px-6 pb-6">
+            <div className="px-6 pb-6 no-print">
               <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
                 <div className="flex">
                   <div className="flex-shrink-0">

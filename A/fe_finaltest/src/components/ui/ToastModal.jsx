@@ -43,9 +43,8 @@ const Toast = ({ type, message, onClose }) => {
 
   return (
     <div
-      className={`fixed top-6 right-6 z-50 flex items-center gap-3 p-4 rounded-xl shadow-2xl text-white font-sans transition-opacity duration-300 ${
-        isVisible ? "opacity-100 animate-slideIn" : "opacity-0 animate-fadeOut"
-      } ${toastStyles[type] || "bg-gradient-to-r from-gray-500 to-gray-600 border-gray-700"}`}
+      className={`fixed top-6 right-6 z-50 flex items-center gap-3 p-4 rounded-xl shadow-2xl text-white font-sans transition-opacity duration-300 ${isVisible ? "opacity-100 animate-slideIn" : "opacity-0 animate-fadeOut"
+        } ${toastStyles[type] || "bg-gradient-to-r from-gray-500 to-gray-600 border-gray-700"}`}
       style={{ minWidth: "320px", maxWidth: "450px" }}
     >
       {/* Icon trạng thái */}

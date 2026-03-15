@@ -295,6 +295,12 @@ const SalePOSPage = () => {
   useEffect(() => {
     if (activeOrderIndex === null || !vouchers.length || currentOrder.totalAmount <= 0) return;
 
+    const isManualNoVoucher = isVoucherManuallySelected && selectedVoucher === "";
+    if (isManualNoVoucher) {
+      setOptimalVoucher(null);
+      return;
+    }
+
     const validVouchers = vouchers.filter((v) => {
       const now = new Date();
       const startDate = parseDateVN(v.startDate);
@@ -441,7 +447,7 @@ const SalePOSPage = () => {
       
       order.voucherId = voucher ? voucher.id : null;
       order.voucherCode = voucherCode;
-      order.isVoucherManuallySelected = isManual && !!voucherCode;
+      order.isVoucherManuallySelected = isManual;
       
       updatedOrders[activeOrderIndex] = order;
       return updatedOrders;

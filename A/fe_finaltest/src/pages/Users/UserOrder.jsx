@@ -123,6 +123,21 @@ const OrderTimeline = ({ currentStatus, onCancelOrder }) => {
         />
       </svg>
     ),
+    4: (
+      <svg
+        className="h-6 w-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
   };
 
   const current = parseInt(currentStatus, 10);
@@ -131,8 +146,10 @@ const OrderTimeline = ({ currentStatus, onCancelOrder }) => {
     const step = parseInt(statusStep, 10);
     if (current === -1 && step === -1)
       return "bg-red-500 text-white shadow-lg shadow-red-200 scale-110";
-    if (step === current)
+    if (step === current) {
+      if (step === 4) return "bg-orange-500 text-white shadow-lg shadow-orange-200 scale-110 ring-4 ring-orange-50";
       return "bg-[#1E3A8A] text-white shadow-lg shadow-blue-200 scale-110 ring-4 ring-blue-50";
+    }
     if (step < current || (current === 5 && step !== -1))
       return "bg-green-500 text-white shadow-md shadow-green-100";
     return "bg-gray-100 text-gray-400 border border-gray-200";
@@ -164,13 +181,15 @@ const OrderTimeline = ({ currentStatus, onCancelOrder }) => {
     }
   };
 
-  const mainFlow = ["0", "2", "3", "5"];
+  const mainFlow = current === 4 ? ["0", "2", "3", "4"] : ["0", "2", "3", "5"];
 
   return (
     <div className="py-6">
       {parseInt(currentStatus) === -1 ? (
-        <div className="flex flex-col items-center justify-center p-8 bg-red-50 rounded-xl border border-red-100 mb-6">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-600 animate-pulse">
+        <div className={`flex flex-col items-center justify-center p-8 rounded-xl border mb-6 ${parseInt(currentStatus) === -1 ? "bg-red-50 border-red-100" : "bg-orange-50 border-orange-100"
+          }`}>
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 animate-pulse ${parseInt(currentStatus) === -1 ? "bg-red-100 text-red-600" : "bg-orange-100 text-orange-600"
+            }`}>
             <svg
               className="w-10 h-10"
               fill="none"
@@ -181,12 +200,16 @@ const OrderTimeline = ({ currentStatus, onCancelOrder }) => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth="2"
-                d="M6 18L18 6M6 6l12 12"
+                d={parseInt(currentStatus) === -1 ? "M6 18L18 6M6 6l12 12" : "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"}
               />
             </svg>
           </div>
-          <h3 className="text-xl font-bold text-red-700">Đơn hàng đã hủy</h3>
-          <p className="text-red-500 mt-1">Đơn hàng này đã bị hủy bỏ.</p>
+          <h3 className={`text-xl font-bold ${parseInt(currentStatus) === -1 ? "text-red-700" : "text-orange-700"}`}>
+            Đơn hàng đã hủy
+          </h3>
+          <p className="text-red-500 mt-1">
+            Đơn hàng này đã bị hủy bỏ.
+          </p>
         </div>
       ) : (
         <div className="relative px-4">
@@ -205,10 +228,10 @@ const OrderTimeline = ({ currentStatus, onCancelOrder }) => {
                 </div>
                 <div
                   className={`mt-4 text-sm font-bold uppercase tracking-wide transition-colors duration-300 ${parseInt(status) === current
-                      ? "text-[#1E3A8A] transform scale-105"
-                      : parseInt(status) < current || current === 5
-                        ? "text-green-600"
-                        : "text-gray-400"
+                    ? "text-[#1E3A8A] transform scale-105"
+                    : parseInt(status) < current || current === 5
+                      ? "text-green-600"
+                      : "text-gray-400"
                     }`}
                 >
                   {orderStatusMap[status]}
@@ -278,6 +301,16 @@ const OrderTimeline = ({ currentStatus, onCancelOrder }) => {
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
               />
+              <div className="mt-4">
+                <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 mb-2 animate-pulse">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-sm font-bold italic">
+                    Lưu ý: Bạn có chắc chắn muốn hủy đơn hàng này không?
+                  </span>
+                </div>
+              </div>
               <div className="mt-4 flex justify-end gap-3">
                 <button
                   className="px-5 py-2.5 rounded-lg text-gray-600 font-medium hover:bg-gray-100 transition-colors"
@@ -324,6 +357,7 @@ const UserOrder = () => {
     { key: "awaiting_delivery", label: "Đã xác nhận", status: 2 },
     { key: "transporting", label: "Đang giao hàng", status: 3 },
     { key: "completed", label: "Hoàn thành", status: 5 },
+    { key: "failed", label: "Giao hàng thất bại", status: 4 },
     { key: "canceled", label: "Đã hủy", status: -1 },
   ];
 
@@ -521,8 +555,8 @@ const UserOrder = () => {
                 <button
                   key={tab.key}
                   className={`relative px-6 py-3 rounded-lg text-sm font-bold transition-all duration-300 transform ${activeTab === tab.key
-                      ? "bg-[#1E3A8A] text-white shadow-lg scale-105"
-                      : "text-gray-600 hover:bg-gray-200 hover:text-[#1E3A8A]"
+                    ? "bg-[#1E3A8A] text-white shadow-lg scale-105"
+                    : "text-gray-600 hover:bg-gray-200 hover:text-[#1E3A8A]"
                     }`}
                   onClick={() => {
                     setActiveTab(tab.key);
@@ -648,8 +682,8 @@ const UserOrder = () => {
                     key={num}
                     onClick={() => setCurrentPage(num)}
                     className={`w-10 h-10 rounded-lg font-bold text-sm transition-all ${currentPage === num
-                        ? "bg-[#1E3A8A] text-white shadow-lg scale-105"
-                        : "bg-white border text-gray-600 hover:bg-gray-100"
+                      ? "bg-[#1E3A8A] text-white shadow-lg scale-105"
+                      : "bg-white border text-gray-600 hover:bg-gray-100"
                       }`}
                   >
                     {num}

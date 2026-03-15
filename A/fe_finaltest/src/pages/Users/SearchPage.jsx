@@ -42,7 +42,12 @@ const SearchPage = () => {
     };
 
     const formatCurrency = (amount) => {
-        return amount ? amount.toLocaleString("vi-VN") + "₫" : "Liên hệ";
+        return amount != null ? amount.toLocaleString("vi-VN") + "₫" : "Liên hệ";
+    };
+
+    const formatPriceRange = (minPrice, maxPrice) => {
+        if (minPrice === maxPrice) return formatCurrency(minPrice);
+        return `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`;
     };
 
     if (loading) {
@@ -98,11 +103,18 @@ const SearchPage = () => {
                                         alt={product.nameProduct}
                                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                     />
-                                    {product.importPrice > product.salePrice && (
-                                        <div className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold py-1 px-2 rounded-full">
-                                            -{Math.round(((product.importPrice - product.salePrice) / product.importPrice) * 100)}%
-                                        </div>
-                                    )}
+                                    <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+                                        {product.isSale && (
+                                            <div className="bg-red-600 text-white text-[10px] font-bold py-1 px-2 rounded-full animate-pulse">
+                                                SALE
+                                            </div>
+                                        )}
+                                        {product.importPrice > product.minPrice && (
+                                            <div className="bg-[#1E3A8A] text-white text-[10px] font-bold py-1 px-2 rounded-full">
+                                                -{Math.round(((product.importPrice - product.minPrice) / product.importPrice) * 100)}%
+                                            </div>
+                                        )}
+                                    </div>
                                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button className="bg-[#1E3A8A] text-white px-4 py-2 rounded-lg font-semibold shadow-lg hover:bg-blue-800 transition-colors flex items-center gap-2">
                                             <FaShoppingCart /> Xem chi tiết
@@ -111,42 +123,33 @@ const SearchPage = () => {
                                 </div>
 
                                 {/* Product Info */}
-                                <div className="p-4">
-                                    <h3 className="font-semibold text-gray-800 text-sm line-clamp-2 mb-2 group-hover:text-[#1E3A8A] transition-colors min-h-[40px]">
-                                        {product.nameProduct}
-                                    </h3>
+                                    <div className="p-4">
+                                        <h3 className="font-semibold text-gray-800 text-sm line-clamp-2 mb-2 group-hover:text-[#1E3A8A] transition-colors min-h-[40px]">
+                                            {product.nameProduct}
+                                        </h3>
 
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-[#1E3A8A] font-bold text-lg">
-                                                {formatCurrency(product.salePrice)}
-                                            </p>
-                                            {product.importPrice > product.salePrice && (
-                                                <p className="text-gray-400 text-sm line-through">
-                                                    {formatCurrency(product.importPrice)}
-                                                </p>
-                                            )}
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex justify-between items-center text-[#1E3A8A] font-extrabold text-sm">
+                                                <span>{formatCurrency(product.minPrice)}</span>
+                                                {product.minPrice !== product.maxPrice && (
+                                                    <span>{formatCurrency(product.maxPrice)}</span>
+                                                )}
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs">
+                                                {product.importPrice > product.minPrice ? (
+                                                    <span className="text-gray-400 line-through">
+                                                        {formatCurrency(product.importPrice)}
+                                                    </span>
+                                                ) : <span></span>}
+                                                <span className="text-gray-500 font-medium">
+                                                    Đã bán: {product.quantitySaled || 0}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {product.quantitySaled > 0 && (
-                                        <div className="mt-3">
-                                            <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                                <span>Đã bán</span>
-                                                <span className="font-semibold">{product.quantitySaled}</span>
-                                            </div>
-                                            <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
-                                                <div
-                                                    className="bg-green-500 h-full rounded-full transition-all"
-                                                    style={{
-                                                        width: `${Math.min((product.quantitySaled / product.quantity) * 100 || 0, 100)}%`,
-                                                    }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    )}
+
                                 </div>
-                            </div>
                         ))}
                     </div>
                 ) : (

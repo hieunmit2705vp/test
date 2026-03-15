@@ -42,9 +42,9 @@ const getStatusClass = (status) => {
 
 export default function OnlineOrder() {
   const [orders, setOrders] = useState([]);
-  const [filteredOrders, setFilteredOrders] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState("");
   const [sortConfig, setSortConfig] = useState({
@@ -58,11 +58,7 @@ export default function OnlineOrder() {
 
   useEffect(() => {
     fetchOrders();
-  }, [currentPage, pageSize, sortConfig, search]);
-
-  useEffect(() => {
-    filterOrders();
-  }, [selectedStatus, orders]);
+  }, [currentPage, pageSize, sortConfig, search, selectedStatus]);
 
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -72,27 +68,18 @@ export default function OnlineOrder() {
         currentPage - 1,
         pageSize,
         sortConfig.key,
-        sortConfig.direction
+        sortConfig.direction,
+        selectedStatus !== null ? Number(selectedStatus) : null
       );
       setOrders(data?.content || []);
       setTotalPages(data?.totalPages || 1);
-      setFilteredOrders(data?.content || []);
+      setTotalElements(data?.totalElements || 0);
     } catch (error) {
       toast.error("Lỗi khi tải dữ liệu đơn hàng Online");
       console.error("Error fetching orders:", error);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const filterOrders = () => {
-    let filtered = [...orders];
-    if (selectedStatus !== null) {
-      filtered = filtered.filter(
-        (order) => order.statusOrder.toString() === selectedStatus
-      );
-    }
-    setFilteredOrders(filtered);
   };
 
   const handleSort = (key) => {
@@ -102,6 +89,7 @@ export default function OnlineOrder() {
   };
 
   const handleStatusFilter = (status) => {
+    setCurrentPage(1);
     setSelectedStatus(status === selectedStatus ? null : status);
   };
 
@@ -115,6 +103,7 @@ export default function OnlineOrder() {
   };
 
   const handleClearFilters = () => {
+    setCurrentPage(1);
     setSelectedStatus(null);
     setSearch("");
   };
@@ -240,7 +229,7 @@ export default function OnlineOrder() {
               </div>
               <p className="mt-4 text-slate-500 font-medium animate-pulse">Đang truy xuất dữ liệu...</p>
             </div>
-          ) : filteredOrders.length === 0 ? (
+          ) : orders.length === 0 ? (
             <div className="py-24 flex flex-col items-center justify-center text-center">
               <div className="bg-slate-50 p-6 rounded-full text-slate-300 mb-4 inline-block">
                 <AiOutlineSearch size={48} />
@@ -279,7 +268,7 @@ export default function OnlineOrder() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredOrders.map((item, index) => {
+                  {orders.map((item, index) => {
                     const isCanceled = item.statusOrder === -1;
                     return (
                       <tr
@@ -348,7 +337,7 @@ export default function OnlineOrder() {
         </div>
 
         {/* Pagination Card */}
-        {filteredOrders.length > 0 && (
+        {totalElements > 0 && (
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-slide-up">
             <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-6">
               {/* Bên trái: Hiển thị */}

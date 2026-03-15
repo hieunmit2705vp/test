@@ -118,103 +118,74 @@ const OrderPOSDetail = () => {
   useEffect(() => {
     const style = document.createElement("style");
     style.innerHTML = `
-      @media print {
-        body {
-          visibility: visible !important;
-          background-color: white !important;
-          font-family: Arial, sans-serif !important;
-          color: #333 !important;
-        }
-
-        /* Ẩn các phần có class no-print */
-        .no-print, .no-print * {
-          display: none !important;
-          visibility: hidden !important;
-        }
-
-        .container .bg-white.rounded-lg.shadow-lg {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-          padding: 0;
-          margin: 0;
-          box-shadow: none !important;
-          border-radius: 0 !important;
-        }
-
-        table {
-          width: 100% !important;
-          border-collapse: collapse !important;
-          page-break-inside: auto !important;
-        }
-
-        table tr {
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-        }
-
-        table td, table th {
-          border: 1px solid #ddd !important;
-          padding: 6px 8px !important;
-        }
-
-        table thead {
-          display: table-header-group !important;
-        }
-
-        table tfoot {
-          display: table-footer-group !important;
-        }
-
-        .bg-white.rounded-lg.shadow-lg:before {
-          content: "CỬA HÀNG The Boys" !important;
-          display: block;
-          text-align: center;
-          font-size: 24px;
-          font-weight: bold;
-          margin: 10px 0;
-          color: #4a90e2;
-        }
-
-        .bg-white.rounded-lg.shadow-lg:after {
-          content: "Địa chỉ: 123 Đường ABC, Quận XYZ, TP. MNV | Hotline: 0123 456 789 | Email: info@xyz.com";
-          display: block;
-          text-align: center;
-          font-size: 12px;
-          color: #7f8c8d;
-          padding: 20px 0;
-          border-top: 1px solid #ccc;
-        }
-
-        .grid {
-          display: grid !important;
-        }
-
-        .md\\:grid-cols-2 {
-          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        }
-
-        .gap-x-16 {
-          column-gap: 4rem !important;
-        }
-
-        .gap-y-4 {
-          row-gap: 1rem !important;
-        }
-
-        .flex {
-          display: flex !important;
-          flex-wrap: wrap !important;
-          gap: 1rem !important;
-        }
-
-        @page {
-          margin: 1cm !important;
-          size: portrait;
-        }
+    @media print {
+      /* Hide EVERYTHING by default for a clean slate */
+      body * {
+        visibility: hidden !important;
       }
-    `;
+
+      /* Only show the invoice container and its children */
+      .bg-white.rounded-lg.shadow-lg.overflow-hidden.max-w-4xl.mx-auto,
+      .bg-white.rounded-lg.shadow-lg.overflow-hidden.max-w-4xl.mx-auto * {
+        visibility: visible !important;
+      }
+
+      /* Position the invoice at the very top left */
+      .bg-white.rounded-lg.shadow-lg.overflow-hidden.max-w-4xl.mx-auto {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+
+      /* Hide sidebar and header explicitly to be sure */
+      header, 
+      aside, 
+      nav,
+      .no-print {
+        display: none !important;
+      }
+
+      /* Reset body and parent containers */
+      body, html {
+        background-color: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        width: 100% !important;
+      }
+
+      /* Ensure tables look good */
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+      }
+      
+      table th, table td {
+        border: 1px solid #eee !important;
+        padding: 8px !important;
+      }
+
+      /* Fix grid layout in print */
+      .grid {
+        display: block !important;
+      }
+      
+      .grid > div {
+        margin-bottom: 10px;
+      }
+
+      @page {
+        margin: 0.5cm !important;
+        size: portrait;
+      }
+    }
+  `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
@@ -266,8 +237,19 @@ const OrderPOSDetail = () => {
     <div className="bg-gray-100 py-8 min-h-screen">
       <div className="container mx-auto px-4">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden max-w-4xl mx-auto">
+          
+          {/* Print only header */}
+          <div className="hidden print:block text-center py-6 border-b-2 border-gray-800">
+            <h1 className="text-3xl font-bold text-gray-800 uppercase tracking-wider mb-2">Cửa Hàng The Boys</h1>
+            <p className="text-gray-600 text-sm">Địa chỉ: 123 Đường ABC, Quận XYZ, TP. MNV</p>
+            <p className="text-gray-600 text-sm">Điện thoại: 0123 456 789 - Email: info@theboys.com</p>
+            <h2 className="text-xl font-bold mt-6 mb-2">HÓA ĐƠN BÁN LẺ</h2>
+            <p className="text-sm font-semibold">Mã hóa đơn: {orderDetails.orderCode || "N/A"}</p>
+            <p className="text-sm">Ngày in: {new Date().toLocaleDateString("vi-VN")}</p>
+          </div>
+
           {/* Header */}
-          <div className="bg-gray-800 text-white p-6">
+          <div className="bg-gray-800 text-white p-6 no-print">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Chi tiết hóa đơn POS</h2>
               <span className="px-3 py-1 bg-blue-500 text-white text-sm font-medium rounded-full">
@@ -470,7 +452,7 @@ const OrderPOSDetail = () => {
 
           {/* Voucher Information */}
           {orderDetails.voucher && (
-            <div className="px-6 pb-6">
+            <div className="px-6 pb-6 no-print">
               <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
                 <div className="flex">
                   <div className="flex-shrink-0">

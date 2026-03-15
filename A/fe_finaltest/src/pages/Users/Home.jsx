@@ -10,14 +10,18 @@ import tt3 from "../../assets/tt3jpg.jpg";
 import tt5 from "../../assets/tt5.jpg";
 
 const formatCurrency = (amount) => {
-  return amount ? amount.toLocaleString("vi-VN") + "₫" : "Liên hệ";
+  return amount != null ? amount.toLocaleString("vi-VN") + "₫" : "Liên hệ";
+};
+
+const formatPriceRange = (minPrice, maxPrice) => {
+  if (minPrice === maxPrice) return formatCurrency(minPrice);
+  return `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`;
 };
 
 const Home = () => {
   const [brands, setBrands] = useState([]);
   const [products, setProducts] = useState([]);
   const [bestSellingProducts, setBestSellingProducts] = useState([]);
-  const [latestProducts, setLatestProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const navigate = useNavigate();
@@ -25,17 +29,15 @@ const Home = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [brandsRes, productsRes, bestSellingRes, latestRes] = await Promise.all([
+        const [brandsRes, productsRes, bestSellingRes] = await Promise.all([
           BrandService.getAllBrands(),
           ProductService.getFilteredProducts({ page: 0, size: 10, sort: "createdDate,desc" }),
-          ProductService.getFilteredProducts({ page: 0, size: 5, sort: "quantitySaled,desc" }),
-          ProductService.getFilteredProducts({ page: 0, size: 4, sort: "createdDate,desc" })
+          ProductService.getFilteredProducts({ page: 0, size: 5, sort: "quantitySaled,desc" })
         ]);
 
         setBrands(brandsRes?.content || []);
         setProducts(productsRes?.content || productsRes?.data || []);
         setBestSellingProducts(bestSellingRes?.content || bestSellingRes?.data || []);
-        setLatestProducts(latestRes?.content || latestRes?.data || []);
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu trang chủ:", error);
       }
@@ -182,13 +184,12 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 4. Best Selling & New Arrivals Grid */}
+      {/* 4. Best Selling Grid */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-6 max-w-7xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-
-            {/* Best Sellers (Left - Larger Column) */}
-            <div className="lg:col-span-7">
+          <div className="grid grid-cols-1 gap-12">
+            {/* Best Sellers (Full Width) */}
+            <div className="lg:col-span-12">
               <div className="flex items-center gap-3 mb-8">
                 <div className="p-3 bg-yellow-100 rounded-full text-yellow-600">
                   <FaTrophy className="text-2xl" />
@@ -196,55 +197,10 @@ const Home = () => {
                 <h2 className="text-3xl font-extrabold text-[#1E3A8A]">Bán Chạy Nhất</h2>
               </div>
               <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 shadow-inner">
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {bestSellingProducts.map((product, index) => (
                     <ProductListItem key={product.id} product={product} rank={index + 1} onView={handleViewProduct} />
                   ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Latest Arrivals (Right - Sticky Column) */}
-            <div className="lg:col-span-5">
-              <div className="sticky top-24">
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="p-3 bg-blue-100 rounded-full text-blue-600">
-                    <FaStar className="text-2xl" />
-                  </div>
-                  <h2 className="text-3xl font-extrabold text-[#1E3A8A]">Mới Lên Kệ</h2>
-                </div>
-                <div className="grid grid-cols-1 gap-5">
-                  {latestProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      onClick={() => handleViewProduct(product.id)}
-                      className="group flex gap-4 p-4 rounded-xl bg-white border border-gray-100 hover:border-[#1E3A8A] shadow-sm hover:shadow-lg transition-all cursor-pointer items-center"
-                    >
-                      <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
-                        <img
-                          src={product.photo || "https://via.placeholder.com/150"}
-                          alt={product.nameProduct}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="text-[10px] uppercase font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">New Arrival</span>
-                        </div>
-                        <h3 className="font-bold text-gray-800 group-hover:text-[#1E3A8A] transition-colors line-clamp-1 mb-1 text-sm md:text-base">
-                          {product.nameProduct}
-                        </h3>
-                        <p className="text-[#1E3A8A] font-extrabold">{formatCurrency(product.salePrice)}</p>
-                      </div>
-                      <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[#1E3A8A] group-hover:text-white transition-all">
-                        <FaArrowRight size={12} />
-                      </div>
-                    </div>
-                  ))}
-
-                  <button onClick={() => navigate("/products")} className="w-full py-4 mt-2 rounded-xl text-[#1E3A8A] font-bold bg-blue-50 hover:bg-[#1E3A8A] hover:text-white transition-all border border-blue-100 uppercase text-sm tracking-wide">
-                    Xem toàn bộ sản phẩm mới
-                  </button>
                 </div>
               </div>
             </div>
@@ -422,8 +378,8 @@ const Home = () => {
 
 // Reusable Premium Product Card
 const ProductCard = ({ product, onView, onToggleSelect, selectedProducts, isHot = false }) => {
-  const discount = product.importPrice > product.salePrice
-    ? Math.round(((product.importPrice - product.salePrice) / product.importPrice) * 100)
+  const discount = product.importPrice > product.minPrice
+    ? Math.round(((product.importPrice - product.minPrice) / product.importPrice) * 100)
     : 0;
 
   const isSelected = selectedProducts.some((p) => p.id === product.id);
@@ -441,8 +397,13 @@ const ProductCard = ({ product, onView, onToggleSelect, selectedProducts, isHot 
 
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
+          {product.isSale && (
+            <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm animate-pulse flex items-center gap-1 uppercase tracking-wider">
+              SALE
+            </span>
+          )}
           {isHot && (
-            <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1 uppercase tracking-wider">
+            <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1 uppercase tracking-wider">
               <FaFire /> Hot
             </span>
           )}
@@ -480,21 +441,30 @@ const ProductCard = ({ product, onView, onToggleSelect, selectedProducts, isHot 
           </h3>
         </div>
 
-        <div className="flex items-end justify-between">
-          <div>
-            <p className="text-[#1E3A8A] font-extrabold text-lg">{formatCurrency(product.salePrice)}</p>
-            {discount > 0 && (
-              <p className="text-xs text-gray-400 line-through">{formatCurrency(product.importPrice)}</p>
+        <div className="mt-auto">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[#1E3A8A] font-extrabold text-sm md:text-base">
+              {formatCurrency(product.minPrice)}
+            </span>
+            {product.minPrice !== product.maxPrice && (
+              <span className="text-[#1E3A8A] font-extrabold text-sm md:text-base">
+                {formatCurrency(product.maxPrice)}
+              </span>
             )}
           </div>
+          <div className="flex justify-between items-center">
+            {discount > 0 && (
+              <span className="text-xs text-gray-400 line-through">
+                {formatCurrency(product.importPrice)}
+              </span>
+            )}
+            <span className="text-xs text-gray-500 ml-auto leading-none pt-1">
+              Đã bán: {product.quantitySaled}
+            </span>
+          </div>
         </div>
-
         {/* Sold Bar */}
         <div className="mt-3">
-          <div className="flex justify-between text-[10px] text-gray-500 mb-1 font-semibold">
-            <span>Đã bán: {product.quantitySaled || 0}</span>
-            {product.quantitySaled > 50 && <span className="text-orange-500">🔥 Bán chạy</span>}
-          </div>
           <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
             <div
               className="bg-gradient-to-r from-[#1E3A8A] to-blue-400 h-full rounded-full"
@@ -523,22 +493,38 @@ const ProductListItem = ({ product, rank, onView }) => {
         {rank}
       </div>
 
-      <div className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-gray-100">
+      <div className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-gray-100 relative">
         <img
           src={product.photo || "https://via.placeholder.com/150"}
           alt={product.nameProduct}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
+        {product.isSale && (
+          <span className="absolute top-1 left-1 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm z-10">
+            SALE
+          </span>
+        )}
       </div>
 
       <div className="flex-1 min-w-0 z-10">
-        <h3 className="font-bold text-gray-800 group-hover:text-[#1E3A8A] transition-colors line-clamp-2 text-base mb-1">
+        <h3 className="font-bold text-gray-800 group-hover:text-[#1E3A8A] transition-colors line-clamp-2 text-sm mb-2 h-10">
           {product.nameProduct}
         </h3>
-        <p className="text-[#1E3A8A] font-extrabold text-lg">{formatCurrency(product.salePrice)}</p>
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-medium">Đã bán {product.quantitySaled}</span>
-          {rank <= 3 && <span className="text-xs text-red-500 font-bold flex items-center gap-1"><FaFire /> Trending</span>}
+        <div className="flex justify-between items-center text-[#1E3A8A] font-extrabold text-sm mb-2">
+          <span>{formatCurrency(product.minPrice)}</span>
+          {product.minPrice !== product.maxPrice && (
+            <span>{formatCurrency(product.maxPrice)}</span>
+          )}
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-medium">
+            Đã bán: {product.quantitySaled}
+          </span>
+          {rank <= 3 && (
+            <span className="text-[10px] text-red-500 font-bold flex items-center gap-1 animate-pulse">
+              <FaFire /> TRENDING
+            </span>
+          )}
         </div>
       </div>
 

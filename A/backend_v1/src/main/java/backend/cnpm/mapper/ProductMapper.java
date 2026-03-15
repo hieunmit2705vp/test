@@ -1,0 +1,19 @@
+package backend.cnpm.mapper;
+
+
+import backend.cnpm.dto.response.ProductResponse;
+import backend.cnpm.entities.Product;
+
+public class ProductMapper {
+    public static ProductResponse toProductResponse(Product product) {
+        return ProductResponse.builder()
+                .id(product.getId())
+                .brand(BrandMapper.toBrandResponse(product.getBrand()))
+                .category(CategoryMapper.toCategoryResponse(product.getCategory()))
+                .material(MaterialMapper.toMaterialResponse(product.getMaterial()))
+                .productName(product.getProductName())
+                .productCode(product.getProductCode())
+                .status(product.getStatus())
+                .build();
+    }
+}

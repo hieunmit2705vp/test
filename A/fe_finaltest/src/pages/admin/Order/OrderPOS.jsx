@@ -34,7 +34,6 @@ const getStatusClass = (status) => {
 
 export default function OrderPOS() {
   const [orders, setOrders] = useState([]);
-  const [filteredOrders, setFilteredOrders] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
@@ -51,11 +50,7 @@ export default function OrderPOS() {
 
   useEffect(() => {
     fetchOrders();
-  }, [currentPage, pageSize, sortConfig, search]);
-
-  useEffect(() => {
-    filterOrders();
-  }, [selectedStatus, orders]);
+  }, [currentPage, pageSize, sortConfig, search, selectedStatus]);
 
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -65,29 +60,19 @@ export default function OrderPOS() {
         currentPage - 1,
         pageSize,
         sortConfig.key,
-        sortConfig.direction
+        sortConfig.direction,
+        selectedStatus !== null ? Number(selectedStatus) : null
       );
 
       setOrders(data.content || []);
       setTotalPages(data.totalPages || 1);
       setTotalElements(data.totalElements || 0);
-      setFilteredOrders(data.content || []);
     } catch (error) {
       console.error("Lỗi khi lấy dữ liệu hóa đơn POS:", error);
       toast.error("Lỗi khi tải dữ liệu hóa đơn POS");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const filterOrders = () => {
-    let filtered = [...orders];
-    if (selectedStatus !== null) {
-      filtered = filtered.filter(
-        (order) => order.statusOrder.toString() === selectedStatus
-      );
-    }
-    setFilteredOrders(filtered);
   };
 
   const handleSort = (key) => {
@@ -97,6 +82,7 @@ export default function OrderPOS() {
   };
 
   const handleStatusFilter = (status) => {
+    setCurrentPage(1);
     setSelectedStatus(status === selectedStatus ? null : status);
   };
 
@@ -110,6 +96,7 @@ export default function OrderPOS() {
   };
 
   const handleClearFilters = () => {
+    setCurrentPage(1);
     setSelectedStatus(null);
     setSearch("");
   };
@@ -244,7 +231,7 @@ export default function OrderPOS() {
               </div>
               <p className="mt-4 text-slate-500 font-medium animate-pulse">Đang tải dữ liệu...</p>
             </div>
-          ) : filteredOrders.length === 0 ? (
+          ) : orders.length === 0 ? (
             <div className="py-24 flex flex-col items-center justify-center">
               <div className="bg-slate-50 p-6 rounded-full text-slate-300 mb-4">
                 <AiOutlineSearch size={48} />
@@ -284,7 +271,7 @@ export default function OrderPOS() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredOrders.map((item, index) => (
+                  {orders.map((item, index) => (
                     <tr
                       key={item.id}
                       className="group hover:bg-slate-50/80 transition-all duration-200"

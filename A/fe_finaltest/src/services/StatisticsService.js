@@ -104,7 +104,10 @@ const StatisticsService = {
     getTop5Customers: async (startDate, endDate) => {
         try {
             const response = await api.get(`${API_BASE_URL}/top-5-customers`, {
-                params: { startDate, endDate }
+                params: {
+                    ...(startDate ? { startDate } : {}),
+                    ...(endDate ? { endDate } : {}),
+                }
             });
             console.log("✅ Top 5 khách hàng:", response.data.data);
             return response.data.data;

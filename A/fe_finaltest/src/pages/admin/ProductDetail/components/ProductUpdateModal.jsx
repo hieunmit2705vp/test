@@ -409,8 +409,10 @@ export default function ProductUpdateModal({
                   {currentProduct?.productDetailCode && (
                     <Barcode
                       value={currentProduct.productDetailCode}
-                      height={60}
-                      width={1.8}
+                      format="CODE128"
+                      height={82}
+                      width={2.4}
+                      margin={12}
                       fontSize={13}
                       background="#ffffff"
                       lineColor="#000000"
