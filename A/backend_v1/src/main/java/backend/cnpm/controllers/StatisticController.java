@@ -22,7 +22,7 @@ public class StatisticController {
     private StatisticService statisticService;
 
     @GetMapping("/daily-stats")
-    public ResponseEntity<ApiResponse> getDailyStats(@RequestParam String startDate, @RequestParam String endDate) {
+    public ResponseEntity<ApiResponse> getDailyStats(@RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
         try {
             List<UnifiedStatisticResponse> data = statisticService.getDailyStats(startDate, endDate);
             return ResponseEntity.ok(new ApiResponse("success", "Truy vấn thống kê hàng ngày thành công", data));
@@ -78,7 +78,7 @@ public class StatisticController {
     }
 
     @GetMapping("/order-status-distribution")
-    public ResponseEntity<ApiResponse> getOrderStatusDistribution(@RequestParam String startDate, @RequestParam String endDate) {
+    public ResponseEntity<ApiResponse> getOrderStatusDistribution(@RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
         try {
             List<OrderStatusDistributionResponse> data = statisticService.getOrderStatusDistribution(startDate, endDate);
             if (data.isEmpty()) {

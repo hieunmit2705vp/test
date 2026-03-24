@@ -63,19 +63,6 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        const now = new Date();
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(now.getDate() - 30);
-
-        const formatDate = (date, isEndOfDay = false) => {
-          const pad = (n) => String(n).padStart(2, "0");
-          const time = isEndOfDay ? "23:59:59" : "00:00:00";
-          return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${time}`;
-        };
-
-        const startDate = formatDate(thirtyDaysAgo);
-        const endDate = formatDate(now, true);
-
         const [
           revenue, 
           profit, 
@@ -94,8 +81,8 @@ const Dashboard = () => {
           StatisticsService.getTotalAdmins(),
           StatisticsService.getTotalStaff(),
           StatisticsService.getTop5Customers(),
-          StatisticsService.getDailyStats(startDate, endDate),
-          StatisticsService.getOrderStatusDistribution(startDate, endDate)
+          StatisticsService.getDailyStats(),
+          StatisticsService.getOrderStatusDistribution()
         ]);
 
         setStats({

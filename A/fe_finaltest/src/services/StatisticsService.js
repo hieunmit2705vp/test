@@ -2,12 +2,17 @@ import api from "../ultils/api"; // Import instance Axios đã cấu hình
 
 const API_BASE_URL = "/api/statistics"; // Đường dẫn tương đối vì baseURL đã được cấu hình trong api.js
 
+const buildDateParams = (startDate, endDate) => ({
+    ...(startDate ? { startDate } : {}),
+    ...(endDate ? { endDate } : {}),
+});
+
 const StatisticsService = {
     // Thống kê gộp Doanh thu & Lợi nhuận
     getDailyStats: async (startDate, endDate) => {
         try {
             const response = await api.get(`${API_BASE_URL}/daily-stats`, {
-                params: { startDate, endDate }
+                params: buildDateParams(startDate, endDate)
             });
             return response.data.data;
         } catch (error) {
@@ -76,7 +81,7 @@ const StatisticsService = {
     getOrderStatusDistribution: async (startDate, endDate) => {
         try {
             const response = await api.get(`${API_BASE_URL}/order-status-distribution`, {
-                params: { startDate, endDate }
+                params: buildDateParams(startDate, endDate)
             });
             console.log("✅ Tỷ lệ đơn hàng theo trạng thái:", response.data.data);
             return response.data.data;

@@ -407,12 +407,15 @@ const OrderPOSDetail = () => {
                     </tr>
                   )}
                 </tbody>
-                <tfoot className="bg-gray-100 text-gray-800 font-bold border-t">
+              </table>
+            </div>
+            {/* Totals outside the table so they do NOT repeat on each printed page */}
+            <div className="mt-2 border-t border-gray-300">
+              <table className="w-full text-sm font-bold text-gray-800 bg-gray-100">
+                <tbody>
                   <tr>
-                    <td colSpan="7" className="py-4 px-4 text-right">
-                      Tổng tiền trước khi áp voucher:
-                    </td>
-                    <td className="py-4 px-4 text-right text-xl text-gray-700">
+                    <td className="py-3 px-4 text-right">Tổng tiền trước khi áp voucher:</td>
+                    <td className="py-3 px-4 text-right text-xl text-gray-700 w-48">
                       {formatCurrency(
                         orderDetails?.orderDetails?.reduce((sum, detail) => {
                           const quantity = detail.quantity ?? 0;
@@ -423,12 +426,9 @@ const OrderPOSDetail = () => {
                     </td>
                   </tr>
                   <tr>
-                    <td colSpan="7" className="py-4 px-4 text-right">
-                      Số tiền giảm giá (voucher):
-                    </td>
-                    <td className="py-4 px-4 text-right text-xl text-green-600">
-                      -
-                      {formatCurrency(
+                    <td className="py-3 px-4 text-right">Số tiền giảm giá (voucher):</td>
+                    <td className="py-3 px-4 text-right text-xl text-green-600 w-48">
+                      -{formatCurrency(
                         orderDetails?.orderDetails?.reduce((sum, detail) => {
                           const quantity = detail.quantity ?? 0;
                           const salePrice = detail.price ?? 0;
@@ -438,14 +438,12 @@ const OrderPOSDetail = () => {
                     </td>
                   </tr>
                   <tr>
-                    <td colSpan="7" className="py-4 px-4 text-right">
-                      Tổng tiền sau khi áp voucher:
-                    </td>
-                    <td className="py-4 px-4 text-right text-xl text-red-600">
+                    <td className="py-3 px-4 text-right">Tổng tiền sau khi áp voucher:</td>
+                    <td className="py-3 px-4 text-right text-xl text-red-600 w-48">
                       {formatCurrency(orderDetails?.totalBill ?? 0)}
                     </td>
                   </tr>
-                </tfoot>
+                </tbody>
               </table>
             </div>
           </div>

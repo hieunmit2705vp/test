@@ -480,9 +480,22 @@ const SalePOSPage = () => {
   const handleUseWalkInCustomer = () => {
     setSelectedCustomer("walk-in");
     setCustomerName("Khách vãng lai");
+    setCustomerUserName("");
     setPhone("");
     setEmail("");
+    setSearchKeyword("Khách vãng lai");
     setShowAddCustomerForm(false);
+    // Lưu "walk-in" vào order object để khi chuyển tab vẫn nhận ra
+    if (activeOrderIndex !== null) {
+      setOrders((prevOrders) => {
+        const updatedOrders = [...prevOrders];
+        updatedOrders[activeOrderIndex] = {
+          ...updatedOrders[activeOrderIndex],
+          customerId: "walk-in",
+        };
+        return updatedOrders;
+      });
+    }
     setNotification({
       type: "info",
       message: "Đã chọn khách vãng lai",
@@ -883,17 +896,37 @@ const SalePOSPage = () => {
       setDiscount(order.discount);
       setPaymentMethod(order.paymentMethod === 0 ? "cash" : "bank_transfer");
       setShowOwnerQR(order.paymentMethod === 1);
-      
+      setFilteredCustomers([]);
+      setIsSearching(false);
+
       if (order.customerId === "walk-in") {
         setCustomerName("Khách vãng lai");
+        setCustomerUserName("");
         setPhone("");
         setEmail("");
+        setSearchKeyword("Khách vãng lai");
+      } else if (!order.customerId || order.customerId === -1) {
+        // Không có khách hàng
+        setCustomerName("");
+        setCustomerUserName("");
+        setPhone("");
+        setEmail("");
+        setSearchKeyword("");
       } else {
         const selected = customers.find((c) => c.id === order.customerId);
         if (selected) {
           setPhone(selected.phone || "");
           setCustomerName(selected.fullname || "");
+          setCustomerUserName(selected.username || "");
           setEmail(selected.email || "");
+          setSearchKeyword(selected.fullname || "");
+        } else {
+          // Customer ID tồn tại nhưng không tìm thấy trong danh sách
+          setCustomerName("");
+          setCustomerUserName("");
+          setPhone("");
+          setEmail("");
+          setSearchKeyword("");
         }
       }
     }

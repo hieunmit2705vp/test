@@ -30,6 +30,17 @@ const Header = () => {
 
   const { isLoggedIn, name } = useSelector((state) => state.user);
 
+  const normalizeVietnameseText = (value = "") => {
+    return value
+      .toString()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "d")
+      .trim();
+  };
+
   // Search logic
   const fetchSuggestions = useCallback(async () => {
     if (!search.trim()) {
@@ -38,12 +49,25 @@ const Header = () => {
       return;
     }
     try {
+      const normalizedKeyword = normalizeVietnameseText(search);
       const response = await ProductService.getFilteredProducts({
-        search,
-        size: 5,
+        search: "",
+        size: 300,
       });
-      setSuggestions(response.content || []);
-      setIsDropdownOpen(true);
+      const products = response.content || [];
+      const matchedSuggestions = products
+        .filter((product) => {
+          const productName = normalizeVietnameseText(product.nameProduct || "");
+          const productCode = normalizeVietnameseText(product.productCode || "");
+          return (
+            productName.includes(normalizedKeyword) ||
+            productCode.includes(normalizedKeyword)
+          );
+        })
+        .slice(0, 5);
+
+      setSuggestions(matchedSuggestions);
+      setIsDropdownOpen(matchedSuggestions.length > 0);
     } catch (error) {
       console.error("Lỗi khi tìm kiếm sản phẩm:", error);
     }
@@ -62,16 +86,24 @@ const Header = () => {
     navigate("/login");
   };
 
-  const handleViewProduct = async (productId) => {
+  const handleViewProduct = async (product) => {
     try {
-      const productDetails = await ProductService.getProductById(productId);
+      if (product?.productCode) {
+        navigate(`/view-product/${product.productCode}`);
+        setIsDropdownOpen(false);
+        setSearch("");
+        return;
+      }
+
+      const productDetails = await ProductService.getProductById(product?.id);
       if (productDetails && productDetails.productCode) {
         navigate(`/view-product/${productDetails.productCode}`);
         setIsDropdownOpen(false);
         setSearch("");
-      } else {
-        alert("Không thể tìm thấy mã sản phẩm.");
+        return;
       }
+
+      alert("Không thể tìm thấy mã sản phẩm.");
     } catch (error) {
       console.error("Lỗi khi lấy chi tiết sản phẩm:", error);
       alert("Không thể xem chi tiết sản phẩm. Vui lòng thử lại.");
@@ -143,7 +175,10 @@ const Header = () => {
                 {suggestions.map((product) => (
                   <div
                     key={product.id}
-                    onClick={() => handleViewProduct(product.id)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleViewProduct(product);
+                    }}
                     className="flex items-center p-3 hover:bg-blue-50 cursor-pointer transition-colors border-b border-gray-50 last:border-b-0 group/item"
                   >
                     <div className="w-10 h-10 flex-shrink-0 rounded-lg overflow-hidden border border-gray-200 group-hover/item:border-[#1E3A8A] transition-colors">
@@ -272,7 +307,14 @@ const Header = () => {
             {isDropdownOpen && suggestions.length > 0 && (
               <div className="absolute top-full left-0 w-full bg-white shadow-xl rounded-xl mt-2 overflow-hidden z-50 border border-gray-100">
                 {suggestions.map((product) => (
-                  <div key={product.id} onClick={() => handleViewProduct(product.id)} className="flex items-center p-3 border-b border-gray-100 last:border-b-0 active:bg-gray-100">
+                  <div
+                    key={product.id}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleViewProduct(product);
+                    }}
+                    className="flex items-center p-3 border-b border-gray-100 last:border-b-0 active:bg-gray-100"
+                  >
                     <img src={product.photo} className="w-10 h-10 object-cover rounded" />
                     <div className="ml-3 truncate">
                       <p className="text-sm font-medium text-gray-900 truncate">{product.nameProduct}</p>

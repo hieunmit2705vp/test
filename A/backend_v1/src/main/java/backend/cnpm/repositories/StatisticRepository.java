@@ -25,7 +25,8 @@ public interface StatisticRepository extends JpaRepository<ProductDetail, Intege
                 GROUP BY order_id
             ) o_cost ON o.id = o_cost.order_id
             WHERE o.status_order = 5
-            AND o.create_date BETWEEN :startDate AND :endDate
+            AND ((:startDate IS NULL OR :startDate = '') OR o.create_date >= :startDate)
+            AND ((:endDate IS NULL OR :endDate = '') OR o.create_date <= :endDate)
             GROUP BY DATE(o.create_date)
             ORDER BY DATE(o.create_date) ASC
             """, nativeQuery = true)
@@ -180,7 +181,8 @@ public interface StatisticRepository extends JpaRepository<ProductDetail, Intege
                    END as status_name,
                    count(o.id) as order_count
             FROM `order` o
-            WHERE o.create_date BETWEEN :startDate AND :endDate
+                     WHERE ((:startDate IS NULL OR :startDate = '') OR o.create_date >= :startDate)
+                     AND ((:endDate IS NULL OR :endDate = '') OR o.create_date <= :endDate)
             GROUP BY o.status_order
             """, nativeQuery = true)
     List<Object[]> getOrderStatusDistribution(@Param("startDate") String startDate,
@@ -257,7 +259,8 @@ public interface StatisticRepository extends JpaRepository<ProductDetail, Intege
             SELECT COALESCE(SUM(total_bill - COALESCE(shipfee, 0)), 0)
             FROM `order`
             WHERE status_order = 5
-            AND create_date BETWEEN :startDate AND :endDate
+            AND create_date >= :startDate
+            AND create_date < DATE_ADD(:endDate, INTERVAL 1 SECOND)
             """, nativeQuery = true)
     BigDecimal getRevenueInPeriod(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
@@ -271,7 +274,8 @@ public interface StatisticRepository extends JpaRepository<ProductDetail, Intege
                 GROUP BY order_id
             ) o_cost ON o.id = o_cost.order_id
             WHERE o.status_order = 5
-            AND o.create_date BETWEEN :startDate AND :endDate
+            AND o.create_date >= :startDate
+            AND o.create_date < DATE_ADD(:endDate, INTERVAL 1 SECOND)
             """, nativeQuery = true)
     BigDecimal getProfitInPeriod(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
@@ -280,7 +284,8 @@ public interface StatisticRepository extends JpaRepository<ProductDetail, Intege
             SELECT COUNT(id)
             FROM `order`
             WHERE status_order = 5
-            AND create_date BETWEEN :startDate AND :endDate
+            AND create_date >= :startDate
+            AND create_date < DATE_ADD(:endDate, INTERVAL 1 SECOND)
             """, nativeQuery = true)
     Long getOrderCountInPeriod(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
@@ -289,7 +294,8 @@ public interface StatisticRepository extends JpaRepository<ProductDetail, Intege
             SELECT COUNT(id)
             FROM `order`
             WHERE status_order = 5 AND kind_of_order = 1
-            AND create_date BETWEEN :startDate AND :endDate
+            AND create_date >= :startDate
+            AND create_date < DATE_ADD(:endDate, INTERVAL 1 SECOND)
             """, nativeQuery = true)
     Long getInStoreOrderCountInPeriod(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
@@ -298,7 +304,8 @@ public interface StatisticRepository extends JpaRepository<ProductDetail, Intege
             SELECT COUNT(id)
             FROM `order`
             WHERE status_order = 5 AND kind_of_order = 0
-            AND create_date BETWEEN :startDate AND :endDate
+            AND create_date >= :startDate
+            AND create_date < DATE_ADD(:endDate, INTERVAL 1 SECOND)
             """, nativeQuery = true)
     Long getOnlineOrderCountInPeriod(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
